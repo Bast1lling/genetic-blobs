@@ -4,12 +4,12 @@ use super::blob::Gene;
 
 /// T: state type, U: genome alphabet
 pub fn genetic_algorithm<T>(population: &mut Vec<T>) -> Vec<T> 
-where T: Gene + Copy{
+where T: Gene + Clone{
     let size = population.len();
     let mut new_population = Vec::with_capacity(size);
     weight(population);
     for _ in 0..size {
-        let parents = get_parents(population, 2);
+        let parents = get_parents(population, 5);
         let mut child = reproduce(parents);
         mutate(&mut child, 0.9);
         new_population.push(child);
@@ -24,17 +24,17 @@ where T: Gene {
 }
 
 fn get_parents<T>(population: &Vec<T>, rho: usize) -> Vec<T> 
-where T: Copy {
+where T: Clone {
     let mut parents = Vec::with_capacity(rho);
     let p = 1.0/rho as f32;
     while parents.len() < rho {
         let index: usize = rnd_exp(p);
-        parents.push(population[index % population.len()]);
+        parents.push(population[index % population.len()].clone());
     }
     parents
 }
 
-fn reproduce<T>(parents: Vec<T>) -> T 
+fn reproduce<T>(mut parents: Vec<T>) -> T 
 where T: Gene {
     assert!(parents.len() > 0, "There needs to be at least one parent");
     let mut rng = rand::thread_rng();
@@ -51,14 +51,15 @@ where T: Gene {
     };
 
     // fit together a child
-    let amount_of_cuts = parents.capacity() - 1;
+    let amount_of_cuts = parents.len() - 1;
     let mut cuts = Vec::with_capacity(amount_of_cuts);
     let mut split_index = get_rand_step(size - 1, parents.len());
-    while split_index < size && cuts.capacity() < amount_of_cuts{
+    while split_index < size && cuts.len() < amount_of_cuts{
         cuts.push(split_index);
-        split_index = get_rand_step(size - 1, parents.len());
+        split_index += get_rand_step(size - 1, parents.len());
     }
-    T::combine(&parents, &cuts)
+    cuts.reverse();
+    T::combine(parents, cuts)
 }
 
 
@@ -72,7 +73,6 @@ where T: Gene {
         let at = rng.gen_range(0..t.length());
         t.mutate(at);
     }
-    todo!()
 }
 
 /// returns a number x of natural numbers with probability p^x

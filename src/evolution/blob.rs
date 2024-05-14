@@ -7,9 +7,22 @@ use rand::{Rng, thread_rng};
 
 pub const SIZE: usize = 64;
 
+#[derive(Debug, Clone, Copy)]
+pub struct RGB {
+    r: u8,
+    g: u8,
+    b: u8,
+}
+
+impl RGB {
+    pub fn as_color(&self) -> (u8, u8, u8) {
+        (self.r, self.g, self.b)
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct Blob {
-    data: Vec<Rgb<u8>>,
+    data: Vec<RGB>,
     size: usize,
     gui_size: f32,
     gui_position: Point2,
@@ -21,19 +34,21 @@ pub trait Gene {
     fn mutate(&mut self, at: usize);
     fn length(&self) -> usize;
 
-    fn combine(parents: &Vec<Self>, cuts: &Vec<usize>) -> Self
+    fn combine(parents: Vec<Self>, cuts: Vec<usize>) -> Self
     where Self: Sized;
 }
 
 impl Gene for Blob {
     fn rate_fitness(&self) -> f32 {
         let weight = 1.0/(3.0 * SIZE as f32 * SIZE as f32);
+        let treshold: u8 = 15;
         let mut fitness = 0.0;
-        for pixel in &self.data {
-            fitness += weight * pixel.red as f32;
-            fitness += weight * pixel.green as f32;
-            fitness += weight * pixel.blue as f32;
+        for color in &self.data {
+            if color.r < treshold && color.g < treshold && color.b < treshold {
+                fitness += 1.0;
+            }
         }
+        //println!("FITNESS: {fitness}");
         fitness
     }
     
@@ -42,12 +57,33 @@ impl Gene for Blob {
     }
     
     fn mutate(&mut self, at: usize) {
-        todo!()
+        let f = Blob::color_generator();
+        self.data[at] = f();
     }
     
-    fn combine(parents: &Vec<Self>, cuts: &Vec<usize>) -> Self
+    fn combine(mut parents: Vec<Self>, mut cuts: Vec<usize>) -> Self
     where Self: Sized {
-        todo!()
+        assert!(!parents.is_empty() && parents.len() - cuts.len() == 1);
+
+        let mut position = *(&parents.iter().fold(Vec2::new(0.0, 0.0), |acc, b| acc + b.gui_position));
+        position.x /= parents.len() as f32;
+        position.y /= parents.len() as f32;
+        let mut child = Blob::new(parents[0].size, parents[0].gui_size, position, Blob::color_generator());
+        let mut start_index = 0;
+        while parents.len() > 0{
+            let mut cut = child.data.len();
+            if cuts.len() > 0 {
+                cut = cuts.pop().unwrap();
+            }
+
+            let parent_colors = &parents.pop().unwrap().data[start_index..cut];
+            start_index = cut;
+            for (i, color) in parent_colors.iter().enumerate() {
+                child.data[i] = *color;
+            }
+            
+        }
+        child
     }
 }
 
@@ -64,19 +100,19 @@ impl Nannou for Blob {
 }
 
 impl Blob {
-    pub fn color_generator() -> impl Fn(usize) -> Rgb<u8> {
-        |_| {
+    pub fn color_generator() -> impl Fn() -> RGB {
+        || {
             let mut rng = thread_rng();
-            Rgb::new(rng.gen(), rng.gen(), rng.gen())
+            RGB { r: rng.gen(), g: rng.gen(), b: rng.gen() }
         }
     }
 
     pub fn new<F>(size: usize, gui_size: f32, gui_position: Point2, color_generator: F) -> Self
-    where F: Fn(usize) -> Rgb<u8>{
+    where F: Fn() -> RGB{
         let mut data = Vec::with_capacity(size);
 
         for i in 0..size {
-            data.push(color_generator(i));
+            data.push(color_generator());
         }
 
         Self { data, size, gui_size, gui_position }
@@ -92,7 +128,7 @@ impl Blob {
             draw.rect().
                 x_y(x,y).
                 w_h(size,size).
-                color(self.data[i]);
+                color(Rgb::from_components(self.data[i].as_color()));
         });
     }
 
@@ -105,7 +141,7 @@ impl Blob {
                 let index = row * SIZE + column;
                 let x = bottom_left.0 + column as f32 * size;
                 let y = bottom_left.1 + row as f32 * size;
-                (pt2(x, y), self.data[index])
+                (pt2(x, y), Rgb::from_components(self.data[index].as_color()))
             });
             draw.polyline().weight(size).points_colored(points);
         })
@@ -124,7 +160,7 @@ impl Blob {
                 draw.rect().
                     x_y(x,y).
                     w_h(self.gui_size,self.gui_size).
-                    color(self.data[i]);
+                    color(Rgb::from_components(self.data[i].as_color()));
             }
         });
     }
@@ -142,7 +178,7 @@ impl Blob {
                 let dist = self.gui_position.distance(Vec2::new(x,y));
 
                 if dist <= offset {
-                    points.push((pt2(x,y), self.data[index]))
+                    points.push((pt2(x,y), Rgb::from_components(self.data[index].as_color())))
                 }
             }
             draw.polyline().weight(self.gui_size).points_colored(points);
