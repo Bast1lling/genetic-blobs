@@ -5,7 +5,7 @@ use crate::{Model, Nannou};
 /// external crate
 use rand::{Rng, thread_rng};
 
-pub const SIZE: usize = 64;
+pub const SIZE: usize = 32;
 
 #[derive(Debug, Clone, Copy)]
 pub struct RGB {
@@ -28,13 +28,16 @@ pub struct Blob {
     gui_position: Point2,
 }
 
-/// a gene is a vector of Ts representing a state
+/// a gene
 pub trait Gene {
     fn rate_fitness(&self) -> f32;
     fn mutate(&mut self, at: usize);
     fn length(&self) -> usize;
-
-    fn combine(parents: Vec<Self>, cuts: Vec<usize>) -> Self
+    /// combines parts of multiple genes into a new one:
+    /// mother: gene from which also all non-genetic information will be copied
+    /// fathers: other genes 
+    /// steps: the interval steps which guide the combination
+    fn combine(mother: &Self, fathers: &Vec<Self>, indices: &Vec<u8>) -> Self
     where Self: Sized;
 }
 
@@ -61,27 +64,18 @@ impl Gene for Blob {
         self.data[at] = f();
     }
     
-    fn combine(mut parents: Vec<Self>, mut cuts: Vec<usize>) -> Self
+    fn combine(mother: &Self, fathers: &Vec<Self>, indices: &Vec<u8>) -> Self
     where Self: Sized {
-        assert!(!parents.is_empty() && parents.len() - cuts.len() == 1);
+        assert!(mother.data.len() == indices.len());
 
-        let mut position = *(&parents.iter().fold(Vec2::new(0.0, 0.0), |acc, b| acc + b.gui_position));
-        position.x /= parents.len() as f32;
-        position.y /= parents.len() as f32;
-        let mut child = Blob::new(parents[0].size, parents[0].gui_size, position, Blob::color_generator());
-        let mut start_index = 0;
-        while parents.len() > 0{
-            let mut cut = child.data.len();
-            if cuts.len() > 0 {
-                cut = cuts.pop().unwrap();
-            }
+        let mut child = mother.clone();
 
-            let parent_colors = &parents.pop().unwrap().data[start_index..cut];
-            start_index = cut;
-            for (i, color) in parent_colors.iter().enumerate() {
-                child.data[i] = *color;
+        for (at, from) in indices.iter().enumerate() {
+            let from = *from as usize;
+            if from >= fathers.len() {
+                continue;
             }
-            
+            child.data[at] = fathers[from].data[at];
         }
         child
     }

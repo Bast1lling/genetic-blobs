@@ -9,7 +9,7 @@ use nannou::prelude::*;
 use nannou_egui::{self, egui, Egui};
 
 /// internal modules
-use evolution::{blob::{Blob, SIZE}, search::genetic_algorithm};
+use evolution::{blob::{Blob, SIZE}, search::evolve};
 use util::util::distribute_uniformly;
 
 /// STARTING WINDOW SIZE
@@ -82,9 +82,9 @@ fn update(app: &App, model: &mut Model, update: Update) {
         ..
     } = *model;
 
-    if app.time.round() as i32 % 5 == 0 {
-        model.blobs = genetic_algorithm(blobs);
-    }
+    model.blobs = evolve(blobs);
+    //if app.time.round() as i32 % 5 == 0 {
+    //}
 
     let pos_shift = scroll(app, model.window_id, app.mouse.position());
     model.center += pos_shift;

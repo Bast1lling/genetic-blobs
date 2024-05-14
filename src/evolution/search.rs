@@ -2,20 +2,22 @@ use nannou::math::num_traits::Pow;
 use rand::Rng;
 use super::blob::Gene;
 
-/// T: state type, U: genome alphabet
-pub fn genetic_algorithm<T>(population: &mut Vec<T>) -> Vec<T> 
+/// use the Ts of one generation to generate another
+pub fn evolve<T>(population: &mut Vec<T>) -> Vec<T> 
 where T: Gene + Clone{
     let size = population.len();
-    let mut new_population = Vec::with_capacity(size);
+    let mut children = Vec::with_capacity(size);
+
     weight(population);
-    for _ in 0..size {
-        let parents = get_parents(population, 5);
-        let mut child = reproduce(parents);
+
+    for mother in population.iter() {
+        let fathers = get_fathers(population, size/4);
+        let mut child = reproduce(mother, &fathers);
         mutate(&mut child, 0.9);
-        new_population.push(child);
+        children.push(child);
     }
 
-    new_population
+    children
 }
 
 fn weight<T>(population: &mut Vec<T>)
@@ -23,43 +25,33 @@ where T: Gene {
     population.sort_unstable_by_key(|p| p.rate_fitness() as i32);
 }
 
-fn get_parents<T>(population: &Vec<T>, rho: usize) -> Vec<T> 
+fn get_fathers<T>(population: &Vec<T>, rho: usize) -> Vec<T> 
 where T: Clone {
-    let mut parents = Vec::with_capacity(rho);
+    let mut fathers = Vec::with_capacity(rho);
     let p = 1.0/rho as f32;
-    while parents.len() < rho {
+    while fathers.len() < rho {
         let index: usize = rnd_exp(p);
-        parents.push(population[index % population.len()].clone());
+        fathers.push(population[index % population.len()].clone());
     }
-    parents
+    fathers
 }
 
-fn reproduce<T>(mut parents: Vec<T>) -> T 
+/// fathers ordered descending according to their fitness
+fn reproduce<T>(mother: &T, fathers: &Vec<T>) -> T 
 where T: Gene {
-    assert!(parents.len() > 0, "There needs to be at least one parent");
-    let mut rng = rand::thread_rng();
-    let size = parents[0].length();
+    assert!(fathers.len() < 256);
 
-    // returns a random stepsize to partition the parents
-    let mut get_rand_step = |a: usize, b: usize| {
-        let result = (a / b) as i32;
-        let mut adjust = rnd_exp(0.3) as i32;
-        if 0.5 < rng.gen() {
-            adjust *= -1;
-        }
-        (result + adjust).clamp(0, a.try_into().unwrap()) as usize
+    // mapper function which maps a genome index to a father
+    let map = |_: usize| {
+        (rnd_exp(0.2) % (fathers.len() + 1)) as u8
     };
 
-    // fit together a child
-    let amount_of_cuts = parents.len() - 1;
-    let mut cuts = Vec::with_capacity(amount_of_cuts);
-    let mut split_index = get_rand_step(size - 1, parents.len());
-    while split_index < size && cuts.len() < amount_of_cuts{
-        cuts.push(split_index);
-        split_index += get_rand_step(size - 1, parents.len());
+    // figure out the intervals at which genetic information will be copied
+    let mut indices = Vec::with_capacity(mother.length());
+    for i in 0..mother.length() {
+        indices.push(map(i));
     }
-    cuts.reverse();
-    T::combine(parents, cuts)
+    T::combine(mother, fathers, &indices)
 }
 
 
