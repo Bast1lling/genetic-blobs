@@ -83,6 +83,7 @@ fn update(app: &App, model: &mut Model, update: Update) {
     } = *model;
 
     model.blobs = evolve(blobs);
+    println!("FPS: {}", app.fps());
     //if app.time.round() as i32 % 5 == 0 {
     //}
 
@@ -125,8 +126,8 @@ fn raw_window_event(_app: &App, model: &mut Model, event: &nannou::winit::event:
 }
 
 fn mouse_wheel(_app: &App, model: &mut Model, dt: MouseScrollDelta, _phase: TouchPhase) {
-    let zoom_change = zoom(dt);
-    model.zoom = (model.zoom + zoom_change).clamp(0.5, 1.5);
+    let zoom_change = zoom(dt, model.zoom);
+    model.zoom = (model.zoom + zoom_change).clamp(0.25, 4.0);
 }
 
 fn scroll(app: &App, window_id: WindowId, pos: Point2) -> Vec2{
@@ -143,9 +144,9 @@ fn scroll(app: &App, window_id: WindowId, pos: Point2) -> Vec2{
     vec
 }
 
-fn zoom(dt: MouseScrollDelta) -> f32 {
+fn zoom(dt: MouseScrollDelta, current: f32) -> f32 {
     match dt {
-        MouseScrollDelta::LineDelta(_, y) => 0.03 * y,
+        MouseScrollDelta::LineDelta(_, y) => 0.03 * current * y,
         MouseScrollDelta::PixelDelta(_) => 0.0
     }
 }

@@ -51,3 +51,21 @@ fn distribute_uniformly_recursive(rng: &mut ThreadRng, amount: u32,  target: u32
 fn calc_area(radius: f32) -> f32 {
     PI * radius * radius
 }
+
+/// returns a number x of natural numbers with probability p^x
+pub fn rnd_exp(expected: usize) -> usize {
+    assert!(expected > 0);
+    let mut rng = rand::thread_rng();
+    // E = (1/1-p)
+    // E * (1-p) = 1
+    // 1 - p = 1/E
+    // p = -(1/E - 1)
+    let p = 1.0 - 1.0 /(expected as f32);
+    let mut result: usize = 0;
+    
+    while rng.gen::<f32>() > p {
+        result += 1;
+    }
+
+    result
+}

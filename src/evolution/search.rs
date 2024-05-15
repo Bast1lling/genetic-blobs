@@ -1,6 +1,7 @@
 use nannou::math::num_traits::Pow;
 use rand::Rng;
 use super::blob::Gene;
+use crate::util::util::rnd_exp;
 
 /// use the Ts of one generation to generate another
 pub fn evolve<T>(population: &mut Vec<T>) -> Vec<T> 
@@ -13,7 +14,8 @@ where T: Gene + Clone{
     for mother in population.iter() {
         let fathers = get_fathers(population, size/4);
         let mut child = reproduce(mother, &fathers);
-        mutate(&mut child, 0.9);
+        let genome_size = child.length();
+        mutate(&mut child, genome_size / 2);
         children.push(child);
     }
 
@@ -28,9 +30,8 @@ where T: Gene {
 fn get_fathers<T>(population: &Vec<T>, rho: usize) -> Vec<T> 
 where T: Clone {
     let mut fathers = Vec::with_capacity(rho);
-    let p = 1.0/rho as f32;
     while fathers.len() < rho {
-        let index: usize = rnd_exp(p);
+        let index: usize = rnd_exp(rho);
         fathers.push(population[index % population.len()].clone());
     }
     fathers
@@ -43,7 +44,7 @@ where T: Gene {
 
     // mapper function which maps a genome index to a father
     let map = |_: usize| {
-        (rnd_exp(0.2) % (fathers.len() + 1)) as u8
+        (rnd_exp(fathers.len()/2) % (fathers.len() + 1)) as u8
     };
 
     // figure out the intervals at which genetic information will be copied
@@ -56,27 +57,13 @@ where T: Gene {
 
 
 /// the greater gamma, the more likely are multiple mutations
-fn mutate<T>(t: &mut T, gamma: f32)
+fn mutate<T>(t: &mut T, expected: usize)
 where T: Gene {
     let mut rng = rand::thread_rng();
-    let p: f32 = 1.0 / (1.0 + gamma.pow(t.length() as f32));
-    let mutation_amount = rnd_exp(p);
+    let mutation_amount = rnd_exp(expected);
     for _ in 0..mutation_amount {
         let at = rng.gen_range(0..t.length());
         t.mutate(at);
     }
-}
-
-/// returns a number x of natural numbers with probability p^x
-fn rnd_exp(p: f32) -> usize {
-    assert!(0.0 < p && p <= 1.0, "Value is not in the range [0, 1]");
-    let mut rng = rand::thread_rng();
-    let mut result: usize = 0;
-    
-    while rng.gen::<f32>() > p {
-        result += 1;
-    }
-
-    result
 }
 
