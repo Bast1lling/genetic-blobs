@@ -11,11 +11,21 @@ where T: Gene + Clone{
 
     weight(population);
 
+    let weights = population.iter().map(|x| x.rate_fitness());
+
+    for (i,w) in weights.enumerate() {
+        if i > 100 {
+            break;
+        }
+        println!("place number {} has score {}", i , w);
+    }
+
     for mother in population.iter() {
-        let fathers = get_fathers(population, size/4);
+        let fathers = get_fathers(population, size/8);
         let mut child = reproduce(mother, &fathers);
         let genome_size = child.length();
-        mutate(&mut child, genome_size / 2);
+        let expected = (genome_size / 100).clamp(1, genome_size - 1);
+        mutate(&mut child, 5);
         children.push(child);
     }
 
@@ -24,7 +34,7 @@ where T: Gene + Clone{
 
 fn weight<T>(population: &mut Vec<T>)
 where T: Gene {
-    population.sort_unstable_by_key(|p| p.rate_fitness() as i32);
+    population.sort_unstable_by_key(|p| -p.rate_fitness() as i32);
 }
 
 fn get_fathers<T>(population: &Vec<T>, rho: usize) -> Vec<T> 

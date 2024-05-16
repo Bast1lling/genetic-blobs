@@ -63,7 +63,7 @@ pub fn rnd_exp(expected: usize) -> usize {
     let p = 1.0 - 1.0 /(expected as f32);
     let mut result: usize = 0;
     
-    while rng.gen::<f32>() > p {
+    while !(rng.gen::<f32>() >= p) {
         result += 1;
     }
 
