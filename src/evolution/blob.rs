@@ -5,7 +5,7 @@ use crate::{Model, Nannou};
 /// external crate
 use rand::{Rng, thread_rng};
 
-pub const SIZE: usize = 32;
+pub const SIZE: usize = 8;
 
 #[derive(Debug, Clone, Copy)]
 pub struct RGB {
@@ -85,7 +85,7 @@ impl Nannou for Blob {
     fn draw(&self, draw: &Draw, model: &Model) {
         let position = model.transform(self.gui_position);
         let size = self.gui_size * model.zoom;
-        self.draw_simple_rect(draw, position, size);
+        self.draw_rect(draw, position, size);
     }
 
     fn update(&mut self) {

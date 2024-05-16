@@ -14,18 +14,18 @@ where T: Gene + Clone{
     let weights = population.iter().map(|x| x.rate_fitness());
 
     for (i,w) in weights.enumerate() {
-        if i > 100 {
+        if i > 10 {
             break;
         }
         println!("place number {} has score {}", i , w);
     }
 
     for mother in population.iter() {
-        let fathers = get_fathers(population, size/8);
+        let fathers = get_fathers(population, 4, size/2);
         let mut child = reproduce(mother, &fathers);
         let genome_size = child.length();
-        let expected = (genome_size / 100).clamp(1, genome_size - 1);
-        mutate(&mut child, 5);
+        let expected = (genome_size / 20).clamp(1, genome_size - 1);
+        mutate(&mut child, expected);
         children.push(child);
     }
 
@@ -37,11 +37,11 @@ where T: Gene {
     population.sort_unstable_by_key(|p| -p.rate_fitness() as i32);
 }
 
-fn get_fathers<T>(population: &Vec<T>, rho: usize) -> Vec<T> 
+fn get_fathers<T>(population: &Vec<T>, rho: usize, diversity: usize) -> Vec<T> 
 where T: Clone {
     let mut fathers = Vec::with_capacity(rho);
     while fathers.len() < rho {
-        let index: usize = rnd_exp(rho);
+        let index: usize = rnd_exp(diversity);
         fathers.push(population[index % population.len()].clone());
     }
     fathers

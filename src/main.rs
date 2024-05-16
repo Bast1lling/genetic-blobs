@@ -51,7 +51,7 @@ fn model(app: &App) -> Model {
     let mut blobs = Vec::new();
 
     let blob_size = 3.0;
-    let blob_amount = 16;
+    let blob_amount = 64;
     let points = distribute_uniformly(blob_amount, SIZE as f32 * blob_size);
 
     points.iter().for_each(|p| {
