@@ -1,6 +1,6 @@
 use rand::Rng;
 use super::blob::{Blob, Gene};
-use crate::util::util::rnd_exp;
+use crate::util::rnd_exp;
 
 pub trait Evolve<T> where T: Gene + Clone {
     fn weight(population: &mut Vec<T>);

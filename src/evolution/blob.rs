@@ -28,22 +28,36 @@ pub struct Blob {
     gui_position: Point2,
 }
 
-/// a gene
+/// A Genome is a set of single data blocks
 pub trait Gene {
+
+    /// determines the fitness of the full genome
+    /// the larger the result, the better is the genome
+    /// currently no normalization is required
     fn rate_fitness(&self) -> f32;
+
+    /// determines the fitness of a single genome building block
+    fn rate_fitness_at(&self, at: usize) -> f32;
+
+    /// replaces a single genome building block by a random block 
     fn mutate(&mut self, at: usize);
+
+    /// returns the amount of single building blocks
     fn length(&self) -> usize;
+
     /// combines parts of multiple genes into a new one:
-    /// mother: gene from which also all non-genetic information will be copied
-    /// fathers: other genes 
-    /// steps: the interval steps which guide the combination
+    /// mother: Genome from which also all non-genetic information will be copied
+    /// fathers: {f | f is Genome} 
+    /// indices: i: Blocks in Genome -> parent in {mother, fathers}
     fn combine(mother: &Self, fathers: &Vec<Self>, indices: &Vec<u8>) -> Self
     where Self: Sized;
 }
 
 impl Gene for Blob {
+
+
     fn rate_fitness(&self) -> f32 {
-        let weight = 1.0/(3.0 * SIZE as f32 * SIZE as f32);
+        // let weight = 1.0/(3.0 * SIZE as f32 * SIZE as f32);
         let treshold: u8 = 15;
         let mut fitness = 0.0;
         for color in &self.data {
@@ -51,8 +65,19 @@ impl Gene for Blob {
                 fitness += 1.0;
             }
         }
-        //println!("FITNESS: {fitness}");
         fitness
+    }
+    
+    fn rate_fitness_at(&self, at: usize) -> f32 {
+        // let weight = 1.0/(3.0 * SIZE as f32 * SIZE as f32);
+        let color: &RGB = &self.data[at];
+        let treshold: u8 = 15;
+        if color.r < treshold && color.g < treshold && color.b < treshold {
+            1.0
+        }
+        else {
+            0.0
+        }
     }
     
     fn length(&self) -> usize {
@@ -85,7 +110,15 @@ impl Nannou for Blob {
     fn draw(&self, draw: &Draw, model: &Model) {
         let position = model.transform(self.gui_position);
         let size = self.gui_size * model.zoom;
-        self.draw_rect(draw, position, size);
+        let mode = 0;
+
+        match mode {
+            0 => self.draw_rect(draw, position, size),
+            1 => self.draw_simple_rect(draw, position, size),
+            2 => self.draw_circle(draw),
+            3 => self.draw_simple_circle(draw),
+            _ => panic!("This drawing mode does not exist!")
+        }
     }
 
     fn update(&mut self) {
@@ -105,7 +138,7 @@ impl Blob {
     where F: Fn() -> RGB{
         let mut data = Vec::with_capacity(size);
 
-        for i in 0..size {
+        for _ in 0..size {
             data.push(color_generator());
         }
 

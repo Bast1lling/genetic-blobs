@@ -1,8 +1,5 @@
 mod evolution;
 mod util;
-mod z;
-
-use std::cell::Ref;
 
 /// nannou
 use nannou::prelude::*;
@@ -10,7 +7,7 @@ use nannou_egui::{self, egui, Egui};
 
 /// internal modules
 use evolution::{blob::{Blob, SIZE}, search::SimpleBlobPopulation};
-use util::util::distribute_uniformly;
+use util::distribute_uniformly;
 
 use crate::evolution::search::Evolve;
 
@@ -32,12 +29,6 @@ struct Model {
 }
 
 impl Model {
-
-    fn get_window_rect(&self, window: &Ref<Window>) -> Rect {
-        let pos = self.center;
-        let win = window.rect();
-        win.shift(pos)
-    }
 
     fn transform(&self, v: Vec2) -> Vec2 {
         (v - self.center) * self.zoom
@@ -102,7 +93,7 @@ fn update(app: &App, model: &mut Model, update: Update) {
 fn view(app: &App, model: &Model, frame: Frame) {
 
     let draw = app.draw();
-    let window = app.window(model.window_id).unwrap();
+    // let window = app.window(model.window_id).unwrap();
 
     draw.background().rgb(0.11, 0.12, 0.13);
 
@@ -116,7 +107,7 @@ fn view(app: &App, model: &Model, frame: Frame) {
 
     draw.to_frame(app, &frame).unwrap();
 
-    let fr = app.fps();
+    // let fr = app.fps();
     //println!("framerate: {fr}");
 
     let _ = model.egui.draw_to_frame(&frame);
