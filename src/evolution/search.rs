@@ -1,79 +1,100 @@
-use nannou::math::num_traits::Pow;
 use rand::Rng;
-use super::blob::Gene;
+use super::blob::{Blob, Gene};
 use crate::util::util::rnd_exp;
 
-/// use the Ts of one generation to generate another
-pub fn evolve<T>(population: &mut Vec<T>) -> Vec<T> 
-where T: Gene + Clone{
-    let size = population.len();
-    let mut children = Vec::with_capacity(size);
+pub trait Evolve<T> where T: Gene + Clone {
+    fn weight(population: &mut Vec<T>);
+    fn get_fathers(population: &Vec<T>, rho: usize, diversity: usize) -> Vec<T>;
+    fn reproduce(mother: &T, fathers: &Vec<T>) -> T;
+    fn mutate(t: &mut T, expected: usize);
+    fn get(&mut self) -> &mut Vec<T>;
+    fn set(&mut self, new_population: Vec<T>);
 
-    weight(population);
-
-    let weights = population.iter().map(|x| x.rate_fitness());
-
-    for (i,w) in weights.enumerate() {
-        if i > 10 {
-            break;
+    fn evolve(&mut self) {
+        let population = self.get();
+        let size = population.len();
+        let mut children = Vec::with_capacity(size);
+    
+        Self::weight(population);
+    
+        let weights = population.iter().map(|x| x.rate_fitness());
+    
+        for (i,w) in weights.enumerate() {
+            if i > 10 {
+                break;
+            }
+            println!("place number {} has score {}", i , w);
         }
-        println!("place number {} has score {}", i , w);
+    
+        for mother in population.iter() {
+            let fathers = Self::get_fathers(population, 4, size/2);
+            let mut child = Self::reproduce(mother, &fathers);
+            let genome_size = child.length();
+            let expected = (genome_size / 20).clamp(1, genome_size - 1);
+            Self::mutate(&mut child, expected);
+            children.push(child);
+        }
+    
+        self.set(children);
     }
-
-    for mother in population.iter() {
-        let fathers = get_fathers(population, 4, size/2);
-        let mut child = reproduce(mother, &fathers);
-        let genome_size = child.length();
-        let expected = (genome_size / 20).clamp(1, genome_size - 1);
-        mutate(&mut child, expected);
-        children.push(child);
-    }
-
-    children
 }
 
-fn weight<T>(population: &mut Vec<T>)
-where T: Gene {
-    population.sort_unstable_by_key(|p| -p.rate_fitness() as i32);
+#[derive(Clone)]
+pub struct SimpleBlobPopulation {
+    pub population: Vec<Blob>,
 }
 
-fn get_fathers<T>(population: &Vec<T>, rho: usize, diversity: usize) -> Vec<T> 
-where T: Clone {
-    let mut fathers = Vec::with_capacity(rho);
-    while fathers.len() < rho {
-        let index: usize = rnd_exp(diversity);
-        fathers.push(population[index % population.len()].clone());
+impl SimpleBlobPopulation {
+    pub fn new(population: Vec<Blob>) -> Self {
+        Self { population }
     }
-    fathers
 }
 
-/// fathers ordered descending according to their fitness
-fn reproduce<T>(mother: &T, fathers: &Vec<T>) -> T 
-where T: Gene {
-    assert!(fathers.len() < 256);
-
-    // mapper function which maps a genome index to a father
-    let map = |_: usize| {
-        (rnd_exp(fathers.len()/2) % (fathers.len() + 1)) as u8
-    };
-
-    // figure out the intervals at which genetic information will be copied
-    let mut indices = Vec::with_capacity(mother.length());
-    for i in 0..mother.length() {
-        indices.push(map(i));
+impl Evolve<Blob> for SimpleBlobPopulation {
+    fn weight(population: &mut Vec<Blob>) {
+        population.sort_unstable_by_key(|p| -p.rate_fitness() as i32);
     }
-    T::combine(mother, fathers, &indices)
-}
 
+    fn get_fathers(population: &Vec<Blob>, rho: usize, diversity: usize) -> Vec<Blob> {
+        let mut fathers = Vec::with_capacity(rho);
+        while fathers.len() < rho {
+            let index: usize = rnd_exp(diversity);
+            fathers.push(population[index % population.len()].clone());
+        }
+        fathers
+    }
 
-/// the greater gamma, the more likely are multiple mutations
-fn mutate<T>(t: &mut T, expected: usize)
-where T: Gene {
-    let mut rng = rand::thread_rng();
-    let mutation_amount = rnd_exp(expected);
-    for _ in 0..mutation_amount {
-        let at = rng.gen_range(0..t.length());
-        t.mutate(at);
+    fn reproduce(mother: &Blob, fathers: &Vec<Blob>) -> Blob {
+        assert!(fathers.len() < 256);
+    
+        // mapper function which maps a genome index to a father
+        let map = |_: usize| {
+            (rnd_exp(fathers.len()/2) % (fathers.len() + 1)) as u8
+        };
+    
+        // figure out the intervals at which genetic information will be copied
+        let mut indices = Vec::with_capacity(mother.length());
+        for i in 0..mother.length() {
+            indices.push(map(i));
+        }
+        Blob::combine(mother, fathers, &indices)
+    }
+
+    fn mutate(t: &mut Blob, expected: usize) {
+        let mut rng = rand::thread_rng();
+        let mutation_amount = rnd_exp(expected);
+        for _ in 0..mutation_amount {
+            let at = rng.gen_range(0..t.length());
+            t.mutate(at);
+        }
+    }
+    
+    fn get(&mut self) -> &mut Vec<Blob> {
+        &mut self.population
+    }
+    
+    fn set(&mut self, new_population: Vec<Blob>) {
+        self.population = new_population;
     }
 }
 

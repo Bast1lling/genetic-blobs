@@ -9,8 +9,10 @@ use nannou::prelude::*;
 use nannou_egui::{self, egui, Egui};
 
 /// internal modules
-use evolution::{blob::{Blob, SIZE}, search::evolve};
+use evolution::{blob::{Blob, SIZE}, search::SimpleBlobPopulation};
 use util::util::distribute_uniformly;
+
+use crate::evolution::search::Evolve;
 
 /// STARTING WINDOW SIZE
 const WIDTH: f32 = 640.0;
@@ -23,7 +25,7 @@ trait Nannou {
 struct Model {
     center: Point2,
     zoom: f32,
-    blobs: Vec<Blob>,
+    blobs: SimpleBlobPopulation,
     egui: Egui,
     count: u32,
     window_id: WindowId,
@@ -71,18 +73,17 @@ fn model(app: &App) -> Model {
     let count = 128;
     let position = Point2::new(0., 0.);
 
-    Model {center: position, zoom: 1.0, blobs, egui, count, window_id}
+    Model {center: position, zoom: 1.0, blobs: SimpleBlobPopulation::new(blobs), egui, count, window_id}
 }
 
 fn update(app: &App, model: &mut Model, update: Update) {
 
     let Model {
         ref mut egui,
-        ref mut blobs,
         ..
     } = *model;
 
-    model.blobs = evolve(blobs);
+    model.blobs.evolve();
     println!("FPS: {}", app.fps());
     //if app.time.round() as i32 % 5 == 0 {
     //}
@@ -107,7 +108,7 @@ fn view(app: &App, model: &Model, frame: Frame) {
 
     //draw_coordinate_system(&app, &model, &draw, &window);
 
-    for blob in &model.blobs {
+    for blob in &model.blobs.population {
         blob.draw(&draw, &model);
     }
     //model.blob.draw_as_polyline(&draw, (0., 0.), 30.);
