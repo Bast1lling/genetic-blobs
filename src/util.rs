@@ -1,6 +1,6 @@
 use nannou::geom::Point2;
-use rand::Rng;
 use rand::rngs::ThreadRng;
+use rand::Rng;
 use std::f32::consts::PI;
 
 /// distribute *amount* objects uniformly in space
@@ -8,11 +8,29 @@ pub fn distribute_uniformly(amount: u32, object_size: f32) -> Vec<Point2> {
     let mut result: Vec<Point2> = Vec::new();
     let sparsity: f32 = 1.0;
     let mut rng = rand::thread_rng();
-    distribute_uniformly_recursive(&mut rng, amount, amount, Point2::new(0.,0.), 0., sparsity *object_size, sparsity *object_size, &mut result);
+    distribute_uniformly_recursive(
+        &mut rng,
+        amount,
+        amount,
+        Point2::new(0., 0.),
+        0.,
+        sparsity * object_size,
+        sparsity * object_size,
+        &mut result,
+    );
     result
 }
 
-fn distribute_uniformly_recursive(rng: &mut ThreadRng, amount: u32,  target: u32, center: Point2, inner_bound: f32, outer_bound: f32, margin_radius: f32, points: &mut Vec<Point2>) {
+fn distribute_uniformly_recursive(
+    rng: &mut ThreadRng,
+    amount: u32,
+    target: u32,
+    center: Point2,
+    inner_bound: f32,
+    outer_bound: f32,
+    margin_radius: f32,
+    points: &mut Vec<Point2>,
+) {
     if target <= 0 {
         return;
     }
@@ -34,18 +52,30 @@ fn distribute_uniformly_recursive(rng: &mut ThreadRng, amount: u32,  target: u32
     let mut index = 0;
     while capacity > index && points.len() < amount as usize {
         let random_angle_offset = (randomness / 2.0) + rng.gen_range(0.0..=randomness);
-        let random_radius_offset_x = (randomness / 2.0) + rng.gen_range(0.0..=randomness/2.);
-        let random_radius_offset_y = (randomness / 2.0) + rng.gen_range(0.0..=randomness/2.);
+        let random_radius_offset_x = (randomness / 2.0) + rng.gen_range(0.0..=randomness / 2.);
+        let random_radius_offset_y = (randomness / 2.0) + rng.gen_range(0.0..=randomness / 2.);
         let angle = random_angle + step_size * index as f32 + step_size * random_angle_offset;
         let x = angle.cos();
         let y = angle.sin();
-        let new_point = Point2::new(center.x + x * initial_radius + margin_radius * random_radius_offset_x, center.y + y * initial_radius + margin_radius * random_radius_offset_y);
+        let new_point = Point2::new(
+            center.x + x * initial_radius + margin_radius * random_radius_offset_x,
+            center.y + y * initial_radius + margin_radius * random_radius_offset_y,
+        );
         points.push(new_point);
 
         index += 1;
     }
 
-    distribute_uniformly_recursive(rng, amount,target - index as u32, center, outer_bound, outer_bound + margin_radius, margin_radius, points);
+    distribute_uniformly_recursive(
+        rng,
+        amount,
+        target - index as u32,
+        center,
+        outer_bound,
+        outer_bound + margin_radius,
+        margin_radius,
+        points,
+    );
 }
 
 fn calc_area(radius: f32) -> f32 {
@@ -60,9 +90,9 @@ pub fn rnd_exp(expected: usize) -> usize {
     // E * (1-p) = 1
     // 1 - p = 1/E
     // p = -(1/E - 1)
-    let p = 1.0 - 1.0 /(expected as f32);
+    let p = 1.0 - 1.0 / (expected as f32);
     let mut result: usize = 0;
-    
+
     while !(rng.gen::<f32>() >= p) {
         result += 1;
     }

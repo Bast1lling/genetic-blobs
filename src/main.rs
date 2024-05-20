@@ -1,4 +1,5 @@
 mod evolution;
+mod statistics;
 mod util;
 
 /// nannou
@@ -6,7 +7,10 @@ use nannou::prelude::*;
 use nannou_egui::{self, egui, Egui};
 
 /// internal modules
-use evolution::{blob::{Blob, SIZE}, search::SimpleBlobPopulation};
+use evolution::{
+    blob::{Blob, SIZE},
+    search::SimpleBlobPopulation,
+};
 use util::distribute_uniformly;
 
 use crate::evolution::search::Evolve;
@@ -29,7 +33,6 @@ struct Model {
 }
 
 impl Model {
-
     fn transform(&self, v: Vec2) -> Vec2 {
         (v - self.center) * self.zoom
     }
@@ -48,7 +51,12 @@ fn model(app: &App) -> Model {
     let points = distribute_uniformly(blob_amount, SIZE as f32 * blob_size);
 
     points.iter().for_each(|p| {
-        blobs.push(Blob::new(SIZE*SIZE, blob_size, *p, Blob::color_generator()));
+        blobs.push(Blob::new(
+            SIZE * SIZE,
+            blob_size,
+            *p,
+            Blob::color_generator(),
+        ));
     });
 
     let window_id = app
@@ -64,15 +72,18 @@ fn model(app: &App) -> Model {
     let count = 128;
     let position = Point2::new(0., 0.);
 
-    Model {center: position, zoom: 1.0, blobs: SimpleBlobPopulation::new(blobs), egui, count, window_id}
+    Model {
+        center: position,
+        zoom: 1.0,
+        blobs: SimpleBlobPopulation::new(blobs),
+        egui,
+        count,
+        window_id,
+    }
 }
 
 fn update(app: &App, model: &mut Model, update: Update) {
-
-    let Model {
-        ref mut egui,
-        ..
-    } = *model;
+    let Model { ref mut egui, .. } = *model;
 
     model.blobs.evolve();
     println!("FPS: {}", app.fps());
@@ -91,10 +102,8 @@ fn update(app: &App, model: &mut Model, update: Update) {
 }
 
 fn view(app: &App, model: &Model, frame: Frame) {
-
     let draw = app.draw();
-    // let window = app.window(model.window_id).unwrap();
-
+    let _window = app.window(model.window_id).unwrap();
     draw.background().rgb(0.11, 0.12, 0.13);
 
     //draw_coordinate_system(&app, &model, &draw, &window);
@@ -122,7 +131,7 @@ fn mouse_wheel(_app: &App, model: &mut Model, dt: MouseScrollDelta, _phase: Touc
     model.zoom = (model.zoom + zoom_change).clamp(0.25, 4.0);
 }
 
-fn scroll(app: &App, window_id: WindowId, pos: Point2) -> Vec2{
+fn scroll(app: &App, window_id: WindowId, pos: Point2) -> Vec2 {
     let window = app.window(window_id).unwrap();
     let pad = 50.0;
     let step_size = 10.0;
@@ -139,6 +148,6 @@ fn scroll(app: &App, window_id: WindowId, pos: Point2) -> Vec2{
 fn zoom(dt: MouseScrollDelta, current: f32) -> f32 {
     match dt {
         MouseScrollDelta::LineDelta(_, y) => 0.03 * current * y,
-        MouseScrollDelta::PixelDelta(_) => 0.0
+        MouseScrollDelta::PixelDelta(_) => 0.0,
     }
 }

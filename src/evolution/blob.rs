@@ -1,9 +1,9 @@
-use nannou::color::Rgb;
-use nannou::Draw;
-use nannou::geom::{Point2, pt2, Vec2};
 use crate::{Model, Nannou};
+use nannou::color::Rgb;
+use nannou::geom::{pt2, Point2, Vec2};
+use nannou::Draw;
 /// external crate
-use rand::{Rng, thread_rng};
+use rand::{thread_rng, Rng};
 
 pub const SIZE: usize = 8;
 
@@ -24,13 +24,12 @@ impl RGB {
 pub struct Blob {
     data: Vec<RGB>,
     size: usize,
-    gui_size: f32,
-    gui_position: Point2,
+    nannou_size: f32,
+    nannou_position: Point2,
 }
 
 /// A Genome is a set of single data blocks
 pub trait Gene {
-
     /// determines the fitness of the full genome
     /// the larger the result, the better is the genome
     /// currently no normalization is required
@@ -39,7 +38,7 @@ pub trait Gene {
     /// determines the fitness of a single genome building block
     fn rate_fitness_at(&self, at: usize) -> f32;
 
-    /// replaces a single genome building block by a random block 
+    /// replaces a single genome building block by a random block
     fn mutate(&mut self, at: usize);
 
     /// returns the amount of single building blocks
@@ -47,15 +46,14 @@ pub trait Gene {
 
     /// combines parts of multiple genes into a new one:
     /// mother: Genome from which also all non-genetic information will be copied
-    /// fathers: {f | f is Genome} 
+    /// fathers: {f | f is Genome}
     /// indices: i: Blocks in Genome -> parent in {mother, fathers}
     fn combine(mother: &Self, fathers: &Vec<Self>, indices: &Vec<u8>) -> Self
-    where Self: Sized;
+    where
+        Self: Sized;
 }
 
 impl Gene for Blob {
-
-
     fn rate_fitness(&self) -> f32 {
         // let weight = 1.0/(3.0 * SIZE as f32 * SIZE as f32);
         let treshold: u8 = 15;
@@ -67,30 +65,31 @@ impl Gene for Blob {
         }
         fitness
     }
-    
+
     fn rate_fitness_at(&self, at: usize) -> f32 {
         // let weight = 1.0/(3.0 * SIZE as f32 * SIZE as f32);
         let color: &RGB = &self.data[at];
         let treshold: u8 = 15;
         if color.r < treshold && color.g < treshold && color.b < treshold {
             1.0
-        }
-        else {
+        } else {
             0.0
         }
     }
-    
+
     fn length(&self) -> usize {
         self.size
     }
-    
+
     fn mutate(&mut self, at: usize) {
         let f = Blob::color_generator();
         self.data[at] = f();
     }
-    
+
     fn combine(mother: &Self, fathers: &Vec<Self>, indices: &Vec<u8>) -> Self
-    where Self: Sized {
+    where
+        Self: Sized,
+    {
         assert!(mother.data.len() == indices.len());
 
         let mut child = mother.clone();
@@ -108,8 +107,8 @@ impl Gene for Blob {
 
 impl Nannou for Blob {
     fn draw(&self, draw: &Draw, model: &Model) {
-        let position = model.transform(self.gui_position);
-        let size = self.gui_size * model.zoom;
+        let position = model.transform(self.nannou_position);
+        let size = self.nannou_size * model.zoom;
         let mode = 0;
 
         match mode {
@@ -117,32 +116,41 @@ impl Nannou for Blob {
             1 => self.draw_simple_rect(draw, position, size),
             2 => self.draw_circle(draw),
             3 => self.draw_simple_circle(draw),
-            _ => panic!("This drawing mode does not exist!")
+            _ => panic!("This drawing mode does not exist!"),
         }
     }
 
-    fn update(&mut self) {
-
-    }
+    fn update(&mut self) {}
 }
 
 impl Blob {
     pub fn color_generator() -> impl Fn() -> RGB {
         || {
             let mut rng = thread_rng();
-            RGB { r: rng.gen(), g: rng.gen(), b: rng.gen() }
+            RGB {
+                r: rng.gen(),
+                g: rng.gen(),
+                b: rng.gen(),
+            }
         }
     }
 
     pub fn new<F>(size: usize, gui_size: f32, gui_position: Point2, color_generator: F) -> Self
-    where F: Fn() -> RGB{
+    where
+        F: Fn() -> RGB,
+    {
         let mut data = Vec::with_capacity(size);
 
         for _ in 0..size {
             data.push(color_generator());
         }
 
-        Self { data, size, gui_size, gui_position }
+        Self {
+            data,
+            size,
+            nannou_size: gui_size,
+            nannou_position: gui_position,
+        }
     }
 
     pub fn draw_rect(&self, draw: &Draw, at: Vec2, size: f32) {
@@ -152,10 +160,10 @@ impl Blob {
             let temp = i / SIZE;
             let y = bottom_left.1 + temp as f32 * size;
             let x = bottom_left.0 + (i % SIZE) as f32 * size;
-            draw.rect().
-                x_y(x,y).
-                w_h(size,size).
-                color(Rgb::from_components(self.data[i].as_color()));
+            draw.rect()
+                .x_y(x, y)
+                .w_h(size, size)
+                .color(Rgb::from_components(self.data[i].as_color()));
         });
     }
 
@@ -164,7 +172,7 @@ impl Blob {
         let bottom_left = (at.x - offset, at.y - offset);
 
         (0..SIZE).for_each(|row| {
-            let points = (0..SIZE).map(|column|{
+            let points = (0..SIZE).map(|column| {
                 let index = row * SIZE + column;
                 let x = bottom_left.0 + column as f32 * size;
                 let y = bottom_left.1 + row as f32 * size;
@@ -175,40 +183,48 @@ impl Blob {
     }
 
     pub fn draw_circle(&self, draw: &Draw) {
-        let offset = (SIZE as f32 / 2.) * self.gui_size - self.gui_size / 2.;
-        let bottom_left = (self.gui_position.x - offset, self.gui_position.y - offset);
+        let offset = (SIZE as f32 / 2.) * self.nannou_size - self.nannou_size / 2.;
+        let bottom_left = (
+            self.nannou_position.x - offset,
+            self.nannou_position.y - offset,
+        );
         (0..(SIZE * SIZE)).for_each(|i| {
             let temp = i / SIZE;
-            let y = bottom_left.1 + temp as f32 * self.gui_size;
-            let x = bottom_left.0 + (i % SIZE) as f32 * self.gui_size;
-            let dist = self.gui_position.distance(Vec2::new(x,y));
+            let y = bottom_left.1 + temp as f32 * self.nannou_size;
+            let x = bottom_left.0 + (i % SIZE) as f32 * self.nannou_size;
+            let dist = self.nannou_position.distance(Vec2::new(x, y));
 
             if dist <= offset {
-                draw.rect().
-                    x_y(x,y).
-                    w_h(self.gui_size,self.gui_size).
-                    color(Rgb::from_components(self.data[i].as_color()));
+                draw.rect()
+                    .x_y(x, y)
+                    .w_h(self.nannou_size, self.nannou_size)
+                    .color(Rgb::from_components(self.data[i].as_color()));
             }
         });
     }
 
     pub fn draw_simple_circle(&self, draw: &Draw) {
-        let offset = (SIZE as f32 / 2.) * self.gui_size - self.gui_size / 2.;
-        let bottom_left = (self.gui_position.x - offset, self.gui_position.y - offset);
+        let offset = (SIZE as f32 / 2.) * self.nannou_size - self.nannou_size / 2.;
+        let bottom_left = (
+            self.nannou_position.x - offset,
+            self.nannou_position.y - offset,
+        );
 
         (0..SIZE).for_each(|row| {
             let mut points = Vec::new();
             for column in 0..SIZE {
                 let index = row * SIZE + column;
-                let x = bottom_left.0 + column as f32 * self.gui_size;
-                let y = bottom_left.1 + row as f32 * self.gui_size;
-                let dist = self.gui_position.distance(Vec2::new(x,y));
+                let x = bottom_left.0 + column as f32 * self.nannou_size;
+                let y = bottom_left.1 + row as f32 * self.nannou_size;
+                let dist = self.nannou_position.distance(Vec2::new(x, y));
 
                 if dist <= offset {
-                    points.push((pt2(x,y), Rgb::from_components(self.data[index].as_color())))
+                    points.push((pt2(x, y), Rgb::from_components(self.data[index].as_color())))
                 }
             }
-            draw.polyline().weight(self.gui_size).points_colored(points);
+            draw.polyline()
+                .weight(self.nannou_size)
+                .points_colored(points);
         })
     }
 }

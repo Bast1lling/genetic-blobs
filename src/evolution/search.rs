@@ -1,8 +1,14 @@
-use rand::Rng;
 use super::blob::{Blob, Gene};
 use crate::util::rnd_exp;
+use rand::Rng;
 
-pub trait Evolve<T> where T: Gene + Clone {
+pub struct Population<Gene> {
+    population: Vec<Gene>,
+}
+pub trait Evolve<T>
+where
+    T: Gene + Clone,
+{
     fn weight(population: &mut Vec<T>);
     fn get_fathers(population: &Vec<T>, rho: usize, diversity: usize) -> Vec<T>;
     fn reproduce(mother: &T, fathers: &Vec<T>) -> T;
@@ -14,27 +20,27 @@ pub trait Evolve<T> where T: Gene + Clone {
         let population = self.get();
         let size = population.len();
         let mut children = Vec::with_capacity(size);
-    
+
         Self::weight(population);
-    
+
         let weights = population.iter().map(|x| x.rate_fitness());
-    
-        for (i,w) in weights.enumerate() {
+
+        for (i, w) in weights.enumerate() {
             if i > 10 {
                 break;
             }
-            println!("place number {} has score {}", i , w);
+            println!("place number {} has score {}", i, w);
         }
-    
+
         for mother in population.iter() {
-            let fathers = Self::get_fathers(population, 4, size/2);
+            let fathers = Self::get_fathers(population, 4, size / 2);
             let mut child = Self::reproduce(mother, &fathers);
             let genome_size = child.length();
             let expected = (genome_size / 20).clamp(1, genome_size - 1);
             Self::mutate(&mut child, expected);
             children.push(child);
         }
-    
+
         self.set(children);
     }
 }
@@ -66,12 +72,10 @@ impl Evolve<Blob> for SimpleBlobPopulation {
 
     fn reproduce(mother: &Blob, fathers: &Vec<Blob>) -> Blob {
         assert!(fathers.len() < 256);
-    
+
         // mapper function which maps a genome index to a father
-        let map = |_: usize| {
-            (rnd_exp(fathers.len()/2) % (fathers.len() + 1)) as u8
-        };
-    
+        let map = |_: usize| (rnd_exp(fathers.len() / 2) % (fathers.len() + 1)) as u8;
+
         // figure out the intervals at which genetic information will be copied
         let mut indices = Vec::with_capacity(mother.length());
         for i in 0..mother.length() {
@@ -88,13 +92,12 @@ impl Evolve<Blob> for SimpleBlobPopulation {
             t.mutate(at);
         }
     }
-    
+
     fn get(&mut self) -> &mut Vec<Blob> {
         &mut self.population
     }
-    
+
     fn set(&mut self, new_population: Vec<Blob>) {
         self.population = new_population;
     }
 }
-
