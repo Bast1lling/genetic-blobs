@@ -1,7 +1,4 @@
-use nannou::{
-    lyon::math::Size,
-    math::num_traits::{PrimInt, ToPrimitive},
-};
+use nannou::math::num_traits::{PrimInt, ToPrimitive};
 use rand::Rng;
 
 use crate::util::{rnd_exp, Create};
@@ -13,7 +10,7 @@ where
     T: Create + Clone + Copy,
 {
     pub data: Vec<T>,
-    pub rate: fn(&T) -> f32,
+    pub cost_function: fn(&T) -> f32,
 }
 
 impl<T> Genome<T>
@@ -23,7 +20,7 @@ where
     /// Determines the fitness of the genome
     pub fn rate_fitness(&self) -> f32 {
         // let norm = 1.0 / self.data.len() as f32;
-        let sum: f32 = self.data.iter().map(|i| (self.rate)(i)).sum();
+        let sum: f32 = self.data.iter().map(|i| (self.cost_function)(i)).sum();
         sum
     }
 
@@ -59,7 +56,7 @@ where
 {
     /// Orders the population descendingly by fitness
     fn weight(population: &mut Vec<&mut Genome<T>>) {
-        population.sort_unstable_by_key(|p| -p.rate_fitness() as i32);
+        population.sort_unstable_by_key(|p| p.rate_fitness() as i32);
     }
     /// Randomly chooses a Vec of fathers according to their fitness
     fn get_fathers(
@@ -121,7 +118,7 @@ where
             if i > 5 {
                 break;
             }
-            println!("place number {} has score {}", i, w);
+            println!("place number {} has cost {}", i, w);
         }
 
         let mut index = size;

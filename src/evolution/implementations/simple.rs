@@ -1,3 +1,5 @@
+use std::ops::Neg;
+
 use nannou::glam::Vec2;
 
 use crate::{
@@ -9,14 +11,18 @@ use crate::{
     Nannou,
 };
 
-fn rate(color: &RGB) -> f32 {
+fn black_costs(color: &RGB) -> f32 {
     // let weight = 1.0/(3.0 * SIZE as f32 * SIZE as f32);
     let treshold: u8 = 15;
     if color.r < treshold && color.g < treshold && color.b < treshold {
-        1.0
-    } else {
         0.0
+    } else {
+        1.0
     }
+}
+
+fn red_ratio(color: &RGB) -> f32 {
+    (((color.r as u16 > 4 * (color.g as u16 + color.b as u16)) as u8) as f32).neg()
 }
 
 #[derive(Debug, Clone)]
@@ -44,12 +50,20 @@ impl SimpleBlobPopulation {
         SimpleBlobPopulation { blobs }
     }
 
+    fn get_cost_function(x: u8) -> fn(&RGB) -> f32 {
+        match x {
+           0 => red_ratio,
+           _ => black_costs
+        }
+    }
+
     fn new_genome(size: usize) -> Genome<RGB> {
         let mut data = Vec::with_capacity(size);
         for _ in 0..size {
             data.push(RGB::new());
         }
-        Genome { data, rate }
+        let cost_function = Self::get_cost_function(0);
+        Genome { data, cost_function }
     }
 
     fn extract_genomes(&mut self) -> Vec<&mut Genome<RGB>> {
