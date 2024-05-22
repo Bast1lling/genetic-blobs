@@ -1,6 +1,6 @@
 mod evolution;
-mod statistics;
 mod simulation;
+mod statistics;
 mod util;
 
 /// nannou
@@ -8,13 +8,8 @@ use nannou::prelude::*;
 use nannou_egui::{self, egui, Egui};
 
 /// internal modules
-use evolution::{
-    implementations::simple::SimpleBlobPopulation,
-    blob::{Blob, SIZE},
-};
+use evolution::implementations::simple::SimpleBlobPopulation;
 use util::distribute_uniformly;
-
-use crate::evolution::{blob::RGB, gene::Evolve};
 
 /// STARTING WINDOW SIZE
 const WIDTH: f32 = 640.0;
@@ -45,8 +40,7 @@ fn main() {
 }
 
 fn model(app: &App) -> Model {
-
-    let genome_length = SIZE * SIZE;
+    let genome_length = 8 * 8;
     let blob_size = 3.0;
     let blob_amount: u16 = 64;
     let points = distribute_uniformly(blob_amount, (genome_length as f32).sqrt() * blob_size);
@@ -77,12 +71,12 @@ fn model(app: &App) -> Model {
 }
 
 fn update(app: &App, model: &mut Model, update: Update) {
-    let Model { 
+    let Model {
         ref mut egui,
         ref mut population,
-        .. 
+        ..
     } = *model;
-    
+
     //SimpleBlobPopulation::evolve(blobs.population.iter_mut().map(|b| b.genome).collect());
     population.update();
     println!("FPS: {}", app.fps());

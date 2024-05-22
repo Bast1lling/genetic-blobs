@@ -4,6 +4,10 @@ use rand::rngs::ThreadRng;
 use rand::Rng;
 use std::f32::consts::PI;
 
+pub trait Create {
+    fn new() -> Self;
+}
+
 /// distribute *amount* objects uniformly in space
 pub fn distribute_uniformly<T: PrimInt>(amount: T, object_size: f32) -> Vec<Point2> {
     let mut result: Vec<Point2> = Vec::new();

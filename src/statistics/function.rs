@@ -1,4 +1,7 @@
-use crate::evolution::gene::{Evolve, Genome, Inform};
+use crate::{
+    evolution::gene::Evolve,
+    util::Create,
+};
 
 pub struct Statistic {
     fitness_data: Vec<f32>,
@@ -15,7 +18,7 @@ impl Statistic {
     pub fn update<T, S>(&mut self, population: &mut T)
     where
         T: Evolve<S, u16>,
-        S: Inform + Clone + Copy,
+        S: Create + Clone + Copy,
     {
         todo!()
     }

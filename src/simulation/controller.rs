@@ -1,7 +1,7 @@
-use crate::evolution::gene::{Genome, Inform};
+use crate::util::Create;
 
 pub trait Control<T>
-where T: Inform + Clone + Copy
+where
+    T: Create + Clone + Copy,
 {
-    
 }

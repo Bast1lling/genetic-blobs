@@ -4,10 +4,21 @@ use rand::Rng;
 use crate::{
     evolution::{
         blob::{Blob, RGB},
-        gene::{Evolve, Genome, Inform},
+        gene::{Evolve, Genome},
     },
-    util::rnd_exp, Nannou,
+    util::{rnd_exp, Create},
+    Nannou,
 };
+
+fn rate(color: &RGB) -> f32 {
+    // let weight = 1.0/(3.0 * SIZE as f32 * SIZE as f32);
+    let treshold: u8 = 15;
+    if color.r < treshold && color.g < treshold && color.b < treshold {
+        1.0
+    } else {
+        0.0
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct SimpleBlobPopulation {
@@ -15,7 +26,12 @@ pub struct SimpleBlobPopulation {
 }
 
 impl SimpleBlobPopulation {
-    pub fn new(nannou_positions: Vec<Vec2>, nannou_size: f32, population_size: u16, genome_size: usize) -> Self {
+    pub fn new(
+        nannou_positions: Vec<Vec2>,
+        nannou_size: f32,
+        population_size: u16,
+        genome_size: usize,
+    ) -> Self {
         let population_size = population_size as usize;
         let mut blobs = Vec::with_capacity(population_size);
         //create a random population
@@ -26,15 +42,15 @@ impl SimpleBlobPopulation {
             blobs.push(blob);
         }
 
-        SimpleBlobPopulation {blobs}
+        SimpleBlobPopulation { blobs }
     }
 
     fn new_genome(size: usize) -> Genome<RGB> {
         let mut data = Vec::with_capacity(size);
         for _ in 0..size {
-            data.push(RGB::random(None));
+            data.push(RGB::new());
         }
-        Genome {data}
+        Genome { data }
     }
 
     fn extract_genomes(&mut self) -> Vec<&mut Genome<RGB>> {
@@ -55,16 +71,20 @@ impl Nannou for SimpleBlobPopulation {
 
     fn update(&mut self) {
         let genome_references = self.extract_genomes();
-       Self::evolve(genome_references);
+        Self::evolve(genome_references, rate);
     }
 }
 
 impl Evolve<RGB, u16> for SimpleBlobPopulation {
     fn weight(population: &mut Vec<&mut Genome<RGB>>) {
-        population.sort_unstable_by_key(|p| -p.rate_fitness() as i32);
+        population.sort_unstable_by_key(|p| -p.rate_fitness(rate) as i32);
     }
 
-    fn get_fathers(population: &Vec<&mut Genome<RGB>>, rho: usize, diversity: usize) -> Vec<Genome<RGB>> {
+    fn get_fathers(
+        population: &Vec<&mut Genome<RGB>>,
+        rho: usize,
+        diversity: usize,
+    ) -> Vec<Genome<RGB>> {
         let mut fathers = Vec::with_capacity(rho);
         while fathers.len() < rho {
             let index: usize = rnd_exp(diversity);
