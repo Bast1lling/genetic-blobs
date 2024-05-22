@@ -1,9 +1,12 @@
+use crate::evolution::gene::Genome;
 use crate::{Model, Nannou};
 use nannou::color::Rgb;
 use nannou::geom::{pt2, Point2, Vec2};
 use nannou::Draw;
 /// external crate
 use rand::{thread_rng, Rng};
+
+use super::gene::Inform;
 
 pub const SIZE: usize = 8;
 
@@ -20,89 +23,32 @@ impl RGB {
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct Blob {
-    data: Vec<RGB>,
-    size: usize,
-    nannou_size: f32,
-    nannou_position: Point2,
-}
-
-/// A Genome is a set of single data blocks
-pub trait Gene {
-    /// determines the fitness of the full genome
-    /// the larger the result, the better is the genome
-    /// currently no normalization is required
-    fn rate_fitness(&self) -> f32;
-
-    /// determines the fitness of a single genome building block
-    fn rate_fitness_at(&self, at: usize) -> f32;
-
-    /// replaces a single genome building block by a random block
-    fn mutate(&mut self, at: usize);
-
-    /// returns the amount of single building blocks
-    fn length(&self) -> usize;
-
-    /// combines parts of multiple genes into a new one:
-    /// mother: Genome from which also all non-genetic information will be copied
-    /// fathers: {f | f is Genome}
-    /// indices: i: Blocks in Genome -> parent in {mother, fathers}
-    fn combine(mother: &Self, fathers: &Vec<Self>, indices: &Vec<u8>) -> Self
-    where
-        Self: Sized;
-}
-
-impl Gene for Blob {
-    fn rate_fitness(&self) -> f32 {
+impl Inform for RGB {
+    fn rate(&self) -> f32 {
         // let weight = 1.0/(3.0 * SIZE as f32 * SIZE as f32);
         let treshold: u8 = 15;
-        let mut fitness = 0.0;
-        for color in &self.data {
-            if color.r < treshold && color.g < treshold && color.b < treshold {
-                fitness += 1.0;
-            }
-        }
-        fitness
-    }
-
-    fn rate_fitness_at(&self, at: usize) -> f32 {
-        // let weight = 1.0/(3.0 * SIZE as f32 * SIZE as f32);
-        let color: &RGB = &self.data[at];
-        let treshold: u8 = 15;
-        if color.r < treshold && color.g < treshold && color.b < treshold {
+        if self.r < treshold && self.g < treshold && self.b < treshold {
             1.0
         } else {
             0.0
         }
     }
 
-    fn length(&self) -> usize {
-        self.size
-    }
-
-    fn mutate(&mut self, at: usize) {
-        let f = Blob::color_generator();
-        self.data[at] = f();
-    }
-
-    fn combine(mother: &Self, fathers: &Vec<Self>, indices: &Vec<u8>) -> Self
-    where
-        Self: Sized,
-    {
-        assert!(mother.data.len() == indices.len());
-
-        let mut child = mother.clone();
-
-        for (at, from) in indices.iter().enumerate() {
-            let from = *from as usize;
-            if from >= fathers.len() {
-                continue;
-            }
-            child.data[at] = fathers[from].data[at];
+    fn random(_example: Option<Self>) -> Self {
+        let mut rng = thread_rng();
+        RGB {
+            r: rng.gen(),
+            g: rng.gen(),
+            b: rng.gen(),
         }
-        child
     }
+}
+
+#[derive(Debug, Clone)]
+pub struct Blob {
+    pub genome: Genome<RGB>,
+    nannou_size: f32,
+    nannou_position: Point2,
 }
 
 impl Nannou for Blob {
@@ -124,32 +70,13 @@ impl Nannou for Blob {
 }
 
 impl Blob {
-    pub fn color_generator() -> impl Fn() -> RGB {
-        || {
-            let mut rng = thread_rng();
-            RGB {
-                r: rng.gen(),
-                g: rng.gen(),
-                b: rng.gen(),
-            }
-        }
-    }
 
-    pub fn new<F>(size: usize, gui_size: f32, gui_position: Point2, color_generator: F) -> Self
-    where
-        F: Fn() -> RGB,
+    pub fn new(genome: Genome<RGB>, nannou_size: f32, nannou_position: Point2) -> Self
     {
-        let mut data = Vec::with_capacity(size);
-
-        for _ in 0..size {
-            data.push(color_generator());
-        }
-
         Self {
-            data,
-            size,
-            nannou_size: gui_size,
-            nannou_position: gui_position,
+            genome: genome,
+            nannou_size,
+            nannou_position,
         }
     }
 
@@ -163,7 +90,7 @@ impl Blob {
             draw.rect()
                 .x_y(x, y)
                 .w_h(size, size)
-                .color(Rgb::from_components(self.data[i].as_color()));
+                .color(Rgb::from_components(self.genome.data[i].as_color()));
         });
     }
 
@@ -176,7 +103,7 @@ impl Blob {
                 let index = row * SIZE + column;
                 let x = bottom_left.0 + column as f32 * size;
                 let y = bottom_left.1 + row as f32 * size;
-                (pt2(x, y), Rgb::from_components(self.data[index].as_color()))
+                (pt2(x, y), Rgb::from_components(self.genome.data[index].as_color()))
             });
             draw.polyline().weight(size).points_colored(points);
         })
@@ -198,7 +125,7 @@ impl Blob {
                 draw.rect()
                     .x_y(x, y)
                     .w_h(self.nannou_size, self.nannou_size)
-                    .color(Rgb::from_components(self.data[i].as_color()));
+                    .color(Rgb::from_components(self.genome.data[i].as_color()));
             }
         });
     }
@@ -219,7 +146,7 @@ impl Blob {
                 let dist = self.nannou_position.distance(Vec2::new(x, y));
 
                 if dist <= offset {
-                    points.push((pt2(x, y), Rgb::from_components(self.data[index].as_color())))
+                    points.push((pt2(x, y), Rgb::from_components(self.genome.data[index].as_color())))
                 }
             }
             draw.polyline()

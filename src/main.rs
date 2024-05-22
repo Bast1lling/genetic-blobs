@@ -1,5 +1,6 @@
 mod evolution;
 mod statistics;
+mod simulation;
 mod util;
 
 /// nannou
@@ -8,12 +9,12 @@ use nannou_egui::{self, egui, Egui};
 
 /// internal modules
 use evolution::{
+    implementations::simple::SimpleBlobPopulation,
     blob::{Blob, SIZE},
-    search::SimpleBlobPopulation,
 };
 use util::distribute_uniformly;
 
-use crate::evolution::search::Evolve;
+use crate::evolution::{blob::RGB, gene::Evolve};
 
 /// STARTING WINDOW SIZE
 const WIDTH: f32 = 640.0;
@@ -26,7 +27,7 @@ trait Nannou {
 struct Model {
     center: Point2,
     zoom: f32,
-    blobs: SimpleBlobPopulation,
+    population: SimpleBlobPopulation,
     egui: Egui,
     count: u32,
     window_id: WindowId,
@@ -44,20 +45,13 @@ fn main() {
 }
 
 fn model(app: &App) -> Model {
-    let mut blobs = Vec::new();
 
+    let genome_length = SIZE * SIZE;
     let blob_size = 3.0;
-    let blob_amount = 64;
-    let points = distribute_uniformly(blob_amount, SIZE as f32 * blob_size);
+    let blob_amount: u16 = 64;
+    let points = distribute_uniformly(blob_amount, (genome_length as f32).sqrt() * blob_size);
 
-    points.iter().for_each(|p| {
-        blobs.push(Blob::new(
-            SIZE * SIZE,
-            blob_size,
-            *p,
-            Blob::color_generator(),
-        ));
-    });
+    let population = SimpleBlobPopulation::new(points, blob_size, blob_amount, genome_length);
 
     let window_id = app
         .new_window()
@@ -75,7 +69,7 @@ fn model(app: &App) -> Model {
     Model {
         center: position,
         zoom: 1.0,
-        blobs: SimpleBlobPopulation::new(blobs),
+        population,
         egui,
         count,
         window_id,
@@ -83,9 +77,14 @@ fn model(app: &App) -> Model {
 }
 
 fn update(app: &App, model: &mut Model, update: Update) {
-    let Model { ref mut egui, .. } = *model;
-
-    model.blobs.evolve();
+    let Model { 
+        ref mut egui,
+        ref mut population,
+        .. 
+    } = *model;
+    
+    //SimpleBlobPopulation::evolve(blobs.population.iter_mut().map(|b| b.genome).collect());
+    population.update();
     println!("FPS: {}", app.fps());
     //if app.time.round() as i32 % 5 == 0 {
     //}
@@ -107,12 +106,10 @@ fn view(app: &App, model: &Model, frame: Frame) {
     draw.background().rgb(0.11, 0.12, 0.13);
 
     //draw_coordinate_system(&app, &model, &draw, &window);
-
-    for blob in &model.blobs.population {
-        blob.draw(&draw, &model);
-    }
     //model.blob.draw_as_polyline(&draw, (0., 0.), 30.);
     //draw_function(&draw, &win, |x| (1./win.h()) * x * x, 1.);
+
+    model.population.draw(&draw, model);
 
     draw.to_frame(app, &frame).unwrap();
 

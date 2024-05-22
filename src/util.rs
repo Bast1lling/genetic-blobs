@@ -1,11 +1,13 @@
 use nannou::geom::Point2;
+use nannou::math::num_traits::PrimInt;
 use rand::rngs::ThreadRng;
 use rand::Rng;
 use std::f32::consts::PI;
 
 /// distribute *amount* objects uniformly in space
-pub fn distribute_uniformly(amount: u32, object_size: f32) -> Vec<Point2> {
+pub fn distribute_uniformly<T: PrimInt>(amount: T, object_size: f32) -> Vec<Point2> {
     let mut result: Vec<Point2> = Vec::new();
+    let amount = amount.to_u32().unwrap_or(0);
     let sparsity: f32 = 1.0;
     let mut rng = rand::thread_rng();
     distribute_uniformly_recursive(

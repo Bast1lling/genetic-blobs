@@ -1,4 +1,4 @@
-use crate::evolution::{blob::Gene, search::Evolve};
+use crate::evolution::gene::{Evolve, Genome, Inform};
 
 pub struct Statistic {
     fitness_data: Vec<f32>,
@@ -11,10 +11,12 @@ impl Statistic {
 
         data
     }
-    
+
     pub fn update<T, S>(&mut self, population: &mut T)
-    where T: Evolve<S>, S: Gene + Clone {
-        let best = &population.get()[0];
-        self.fitness_data.push(best.rate_fitness());
+    where
+        T: Evolve<S, u16>,
+        S: Inform + Clone + Copy,
+    {
+        todo!()
     }
 }
