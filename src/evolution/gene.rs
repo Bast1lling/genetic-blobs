@@ -1,6 +1,10 @@
-use nannou::math::num_traits::PrimInt;
+use nannou::{
+    lyon::math::Size,
+    math::num_traits::{PrimInt, ToPrimitive},
+};
+use rand::Rng;
 
-use crate::util::Create;
+use crate::util::{rnd_exp, Create};
 
 /// A genome is a set of heritable pieces of information (PoI)
 #[derive(Debug, Clone)]
@@ -9,6 +13,7 @@ where
     T: Create + Clone + Copy,
 {
     pub data: Vec<T>,
+    pub rate: fn(&T) -> f32,
 }
 
 impl<T> Genome<T>
@@ -16,9 +21,9 @@ where
     T: Create + Clone + Copy,
 {
     /// Determines the fitness of the genome
-    pub fn rate_fitness(&self, rate: fn(&T) -> f32) -> f32 {
+    pub fn rate_fitness(&self) -> f32 {
         // let norm = 1.0 / self.data.len() as f32;
-        let sum: f32 = self.data.iter().map(|i| rate(i)).sum();
+        let sum: f32 = self.data.iter().map(|i| (self.rate)(i)).sum();
         sum
     }
 
@@ -53,27 +58,64 @@ where
     S: PrimInt,
 {
     /// Orders the population descendingly by fitness
-    fn weight(population: &mut Vec<&mut Genome<T>>);
-
+    fn weight(population: &mut Vec<&mut Genome<T>>) {
+        population.sort_unstable_by_key(|p| -p.rate_fitness() as i32);
+    }
     /// Randomly chooses a Vec of fathers according to their fitness
     fn get_fathers(
         population: &Vec<&mut Genome<T>>,
         rho: usize,
         diversity: usize,
-    ) -> Vec<Genome<T>>;
+    ) -> Vec<Genome<T>> {
+        let mut fathers = Vec::with_capacity(rho);
+        while fathers.len() < rho {
+            let index: usize = rnd_exp(diversity);
+            fathers.push(population[index % population.len()].clone());
+        }
+        fathers
+    }
 
     /// Performs a mapping m: PoI -> {mother; fathers}
-    fn get_indices(genome_size: usize, fathers: &Vec<Genome<T>>) -> Vec<S>;
+    fn get_indices(genome_size: usize, fathers: &Vec<Genome<T>>) -> Vec<S> {
+        assert!(fathers.len() < S::max_value().to_usize().unwrap_or(usize::max_value()));
+
+        // mapper function which maps a genome index to a father
+        let map = |_: usize| {
+            let result = S::from(rnd_exp(fathers.len() / 2) % (fathers.len() + 1));
+            match result {
+                Some(x) => x,
+                None => panic!("Failed to convert usize into this PrimNum type"),
+            }
+        };
+        let size = genome_size.to_usize();
+        let size = match size {
+            Some(x) => x,
+            None => panic!("Failed to convert genome_size into usize"),
+        };
+        // figure out the intervals at which genetic information will be copied
+        let mut indices = Vec::with_capacity(size);
+        for i in 0..size {
+            indices.push(map(i));
+        }
+        indices
+    }
 
     /// Adds <~expected> Mutations to a Genome
-    fn mutate(t: &mut Genome<T>, expected: usize);
+    fn mutate(t: &mut Genome<T>, expected: usize) {
+        let mut rng = rand::thread_rng();
+        let mutation_amount = rnd_exp(expected);
+        for _ in 0..mutation_amount {
+            let at = rng.gen_range(0..t.len());
+            t.mutate_at(at);
+        }
+    }
 
-    fn evolve(mut population: Vec<&mut Genome<T>>, rate: fn(&T) -> f32) {
+    fn evolve(mut population: Vec<&mut Genome<T>>) {
         let size = population.len();
 
         Self::weight(&mut population);
 
-        let weights = population.iter().map(|x| x.rate_fitness(rate));
+        let weights = population.iter().map(|x| x.rate_fitness());
 
         for (i, w) in weights.enumerate() {
             if i > 5 {

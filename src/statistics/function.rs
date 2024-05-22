@@ -1,7 +1,4 @@
-use crate::{
-    evolution::gene::Evolve,
-    util::Create,
-};
+use crate::{evolution::gene::Evolve, util::Create};
 
 pub struct Statistic {
     fitness_data: Vec<f32>,

@@ -66,12 +66,12 @@ impl Blob {
     }
 
     pub fn draw_rect(&self, draw: &Draw, at: Vec2, size: f32) {
-        let width = (self.genome.len() as f32).sqrt();
-        let offset = (width / 2.) * size - size / 2.;
+        let width = (self.genome.len() as f32).sqrt() as usize;
+        let offset = (width as f32 / 2.) * size - size / 2.;
         let bottom_left = (at.x - offset, at.y - offset);
         (0..self.genome.len()).for_each(|i| {
-            let temp = i as f32 / width;
-            let y = bottom_left.1 + temp * size;
+            let temp = i / width;
+            let y = bottom_left.1 + (temp as f32) * size;
             let x = bottom_left.0 + (i % width as usize) as f32 * size;
             draw.rect()
                 .x_y(x, y)
@@ -100,15 +100,15 @@ impl Blob {
     }
 
     pub fn draw_circle(&self, draw: &Draw) {
-        let width = (self.genome.len() as f32).sqrt();
-        let offset = (width / 2.) * self.nannou_size - self.nannou_size / 2.;
+        let width = (self.genome.len() as f32).sqrt() as usize;
+        let offset = (width as f32 / 2.) * self.nannou_size - self.nannou_size / 2.;
         let bottom_left = (
             self.nannou_position.x - offset,
             self.nannou_position.y - offset,
         );
         (0..self.genome.len()).for_each(|i| {
-            let temp = i as f32 / width;
-            let y = bottom_left.1 + temp * self.nannou_size;
+            let temp = i / width;
+            let y = bottom_left.1 + (temp as f32) * self.nannou_size;
             let x = bottom_left.0 + (i % width as usize) as f32 * self.nannou_size;
             let dist = self.nannou_position.distance(Vec2::new(x, y));
 

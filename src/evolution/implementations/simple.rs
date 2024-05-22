@@ -1,12 +1,11 @@
 use nannou::glam::Vec2;
-use rand::Rng;
 
 use crate::{
     evolution::{
         blob::{Blob, RGB},
         gene::{Evolve, Genome},
     },
-    util::{rnd_exp, Create},
+    util::Create,
     Nannou,
 };
 
@@ -50,7 +49,7 @@ impl SimpleBlobPopulation {
         for _ in 0..size {
             data.push(RGB::new());
         }
-        Genome { data }
+        Genome { data, rate }
     }
 
     fn extract_genomes(&mut self) -> Vec<&mut Genome<RGB>> {
@@ -71,48 +70,8 @@ impl Nannou for SimpleBlobPopulation {
 
     fn update(&mut self) {
         let genome_references = self.extract_genomes();
-        Self::evolve(genome_references, rate);
+        Self::evolve(genome_references);
     }
 }
 
-impl Evolve<RGB, u16> for SimpleBlobPopulation {
-    fn weight(population: &mut Vec<&mut Genome<RGB>>) {
-        population.sort_unstable_by_key(|p| -p.rate_fitness(rate) as i32);
-    }
-
-    fn get_fathers(
-        population: &Vec<&mut Genome<RGB>>,
-        rho: usize,
-        diversity: usize,
-    ) -> Vec<Genome<RGB>> {
-        let mut fathers = Vec::with_capacity(rho);
-        while fathers.len() < rho {
-            let index: usize = rnd_exp(diversity);
-            fathers.push(population[index % population.len()].clone());
-        }
-        fathers
-    }
-
-    fn get_indices(size: usize, fathers: &Vec<Genome<RGB>>) -> Vec<u16> {
-        assert!(fathers.len() < u16::max_value() as usize);
-
-        // mapper function which maps a genome index to a father
-        let map = |_: usize| (rnd_exp(fathers.len() / 2) % (fathers.len() + 1)) as u16;
-
-        // figure out the intervals at which genetic information will be copied
-        let mut indices = Vec::with_capacity(size);
-        for i in 0..size {
-            indices.push(map(i));
-        }
-        indices
-    }
-
-    fn mutate(t: &mut Genome<RGB>, expected: usize) {
-        let mut rng = rand::thread_rng();
-        let mutation_amount = rnd_exp(expected);
-        for _ in 0..mutation_amount {
-            let at = rng.gen_range(0..t.len());
-            t.mutate_at(at);
-        }
-    }
-}
+impl Evolve<RGB, u16> for SimpleBlobPopulation {}
