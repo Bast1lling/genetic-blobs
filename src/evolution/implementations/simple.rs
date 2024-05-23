@@ -11,7 +11,7 @@ use crate::{
     Nannou,
 };
 
-fn black_costs(color: &RGB) -> f32 {
+pub fn black_costs(color: &RGB) -> f32 {
     // let weight = 1.0/(3.0 * SIZE as f32 * SIZE as f32);
     let treshold: u8 = 15;
     if color.r < treshold && color.g < treshold && color.b < treshold {
@@ -21,7 +21,7 @@ fn black_costs(color: &RGB) -> f32 {
     }
 }
 
-fn red_ratio(color: &RGB) -> f32 {
+pub fn red_ratio(color: &RGB) -> f32 {
     (((color.r as u16 > 4 * (color.g as u16 + color.b as u16)) as u8) as f32).neg()
 }
 
