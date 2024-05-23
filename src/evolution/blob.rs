@@ -7,6 +7,8 @@ use nannou::Draw;
 /// external crate
 use rand::{thread_rng, Rng};
 
+use super::gene::Creature;
+
 #[derive(Debug, Clone, Copy)]
 pub struct RGB {
     pub r: u8,
@@ -43,6 +45,12 @@ pub struct Blob {
     nannou_size: f32,
     nannou_position: Point2,
     velocity: Vec2,
+}
+
+impl Creature<RGB> for Blob {
+    fn extract_genome(&mut self) -> &mut Genome<RGB> {
+        &mut self.genome
+    }
 }
 
 impl Nannou for Blob {

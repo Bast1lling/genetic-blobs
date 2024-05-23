@@ -3,7 +3,7 @@ use nannou::glam::Vec2;
 use crate::{
     evolution::{
         blob::RGB,
-        gene::{CostFunction, Evolve, Population},
+        gene::{CostFunction, Evolve},
         population::{red_ratio, SimpleBlobPopulation},
     },
     util::Create,
@@ -29,8 +29,7 @@ impl Nannou for SimpleBlobController {
     }
 
     fn update(&mut self) {
-        let genome_references = self.population.extract_genomes();
-        SimpleBlobPopulation::evolve(genome_references, self.cost_function);
+        SimpleBlobPopulation::evolve(&mut self.population, self.cost_function);
 
         for blob in self.population.iter_mut() {
             blob.update();
@@ -49,6 +48,9 @@ impl Create for SimpleBlobController {
         let cost_function: CostFunction<RGB> = red_ratio;
         let population = SimpleBlobPopulation::create_like(params);
 
-        SimpleBlobController { population, cost_function }
+        SimpleBlobController {
+            population,
+            cost_function,
+        }
     }
 }

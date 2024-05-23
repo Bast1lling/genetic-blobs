@@ -3,19 +3,13 @@ use rand::Rng;
 
 use crate::util::{rnd_exp, Create};
 
-/// A CostFunction determines the cost of a Type
+use super::population;
+
+/// A CostFunction determines the cost of an information T
 pub type CostFunction<T> = fn(&T) -> f32;
 
 /// A Genome is a set of heritable pieces of information T
-/// It is also able to rate each piece of information according to a CostFunction
 pub type Genome<T> = Vec<T>;
-
-pub trait Genetic<T> {
-    fn rate_fitness(&self, cost_function: CostFunction<T>) -> f32;
-    fn mutate_at(&mut self, at: usize);
-    fn combine<S: PrimInt>(&mut self, fathers: &Vec<Self>, indices: &Vec<S>)
-    where Self: Sized;
-}
 
 /// A Quadrant defines a specific subset of the Genome
 pub enum Quadrant {
@@ -25,23 +19,39 @@ pub enum Quadrant {
     LeftTriangularQuadrant,
 }
 
+/// The trait which a Genome needs to fulfill
+pub trait Genetic<T> {
+    /// Determines the combined cost of a Genome
+    fn rate_fitness(&self, cost_function: CostFunction<T>) -> f32;
+
+    /// Randomly replaces a single information inside a Genome
+    fn mutate_at(&mut self, at: usize);
+
+    /// Combines parts of yourself with other Genomes according to the indices vector
+    fn combine<S: PrimInt>(&mut self, fathers: &Vec<Self>, indices: &Vec<S>)
+    where
+        Self: Sized;
+}
+
+/// Concrete implementation of the Genetic trait
 impl<T> Genetic<T> for Genome<T>
 where
     T: Create + Clone + Copy,
 {
-    /// Determines the fitness of the genome
+    /// Sums up the single costs
     fn rate_fitness(&self, cost_function: CostFunction<T>) -> f32 {
         // let norm = 1.0 / self.data.len() as f32;
         let sum: f32 = self.iter().map(|i| cost_function(i)).sum();
         sum
     }
 
-    /// Replaces a PoI by another random PoI
+    /// Requires the information to implement Create
     fn mutate_at(&mut self, at: usize) {
         self[at] = T::create();
     }
 
-    /// Replaces subsets of the genome with subsets in "fathers"
+    /// Assumes that each number in indices is pointing to a father
+    /// if n >= fathers.len, the mother information is used
     fn combine<S: PrimInt>(&mut self, fathers: &Vec<Self>, indices: &Vec<S>) {
         assert!(self.len() == indices.len());
 
@@ -55,37 +65,63 @@ where
     }
 }
 
-pub trait Population<T: Create + Clone + Copy> {
-    fn new_genome(size: usize) -> Genome<T>;
-
-    fn extract_genomes(&mut self) -> Vec<&mut Genome<T>>;
-}
-
-/// Structs implementing this can evolve a population of up to <S_max> genomes T
-pub trait Evolve<T, S>
+impl<T> Create for Genome<T>
 where
     T: Create + Clone + Copy,
+{
+    type Params = usize;
+
+    fn create() -> Self {
+        todo!()
+    }
+
+    fn create_like(params: Option<Self::Params>) -> Self {
+        let size = params.unwrap();
+        let mut genome = Vec::with_capacity(size);
+        for _ in 0..size {
+            genome.push(T::create());
+        }
+        genome
+    }
+}
+
+/// A type which carries a Genome<T> is called a Creature
+pub trait Creature<T: Create + Clone + Copy> {
+    /// A Creature can provide access to its Genome through this interface method
+    fn extract_genome(&mut self) -> &mut Genome<T>;
+}
+
+/// Definition of a genetic algorithm operating on a population
+/// T: The information type of a Genome
+/// R: A population of Creatures
+/// S: A number defining the maximum size of the population
+pub trait Evolve<T, R, S>
+where
+    T: Create + Clone + Copy,
+    R: Creature<T>,
     S: PrimInt,
 {
-    /// Orders the population descendingly by fitness
-    fn weight(population: &mut Vec<&mut Genome<T>>, cost_function: CostFunction<T>) {
-        population.sort_unstable_by_key(|p| p.rate_fitness(cost_function) as i32);
+    /// Puts the genome with lowest cost first
+    fn weight(genome_pool: &mut Vec<&mut Genome<T>>, cost_function: CostFunction<T>) {
+        genome_pool.sort_unstable_by_key(|p| p.rate_fitness(cost_function) as i32);
     }
-    /// Randomly chooses a Vec of fathers according to their fitness
+
+    /// Randomly chooses a pool of fathers from the population
+    /// Todo: remove cloning for speed up
     fn get_fathers(
-        population: &Vec<&mut Genome<T>>,
+        genome_pool: &Vec<&mut Genome<T>>,
         rho: usize,
         diversity: usize,
     ) -> Vec<Genome<T>> {
         let mut fathers = Vec::with_capacity(rho);
         while fathers.len() < rho {
             let index: usize = rnd_exp(diversity);
-            fathers.push(population[index % population.len()].clone());
+            fathers.push(genome_pool[index % genome_pool.len()].clone());
         }
         fathers
     }
 
-    /// Performs a mapping m: PoI -> {mother; fathers}
+    /// Performs a mapping for (every t in Genome<T>) to its (parent in {mother; fathers})
     fn get_indices(genome_size: usize, fathers: &Vec<Genome<T>>) -> Vec<S> {
         assert!(fathers.len() < S::max_value().to_usize().unwrap_or(usize::max_value()));
 
@@ -120,12 +156,18 @@ where
         }
     }
 
-    fn evolve(mut population: Vec<&mut Genome<T>>, cost_function: CostFunction<T>) {
-        let size = population.len();
+    /// One iteration of a genetic algorithm
+    /// It manipulates the genomes of a population to form a new generation
+    fn evolve(population: &mut Vec<R>, cost_function: CostFunction<T>) {
+        let mut genome_pool: Vec<&mut Genome<T>> = Vec::with_capacity(population.len());
+        for creature in population.iter_mut() {
+            genome_pool.push(creature.extract_genome());
+        }
+        let size = genome_pool.len();
 
-        Self::weight(&mut population, cost_function);
+        Self::weight(&mut genome_pool, cost_function);
 
-        let weights = population.iter().map(|x| x.rate_fitness(cost_function));
+        let weights = genome_pool.iter().map(|x| x.rate_fitness(cost_function));
 
         for (i, w) in weights.enumerate() {
             if i > 5 {
@@ -137,8 +179,8 @@ where
         let mut index = size;
 
         while index > 0 {
-            let fathers = Self::get_fathers(&population, 4, size / 2);
-            let mother = &mut population[index - 1];
+            let fathers = Self::get_fathers(&genome_pool, 4, size / 2);
+            let mother = &mut genome_pool[index - 1];
             let genome_size = mother.len();
             let indices = Self::get_indices(genome_size, &fathers);
             mother.combine(&fathers, &indices);

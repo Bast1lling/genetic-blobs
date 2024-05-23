@@ -36,7 +36,6 @@ impl Model {
 
 fn main() {
     nannou::app(model).update(update).run();
-    //avg(&get_grades());
 }
 
 fn model(app: &App) -> Model {

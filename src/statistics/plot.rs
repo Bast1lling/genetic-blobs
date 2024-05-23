@@ -51,12 +51,3 @@ impl Nannou for Plot {
 
     fn update(&mut self) {}
 }
-
-impl Plot {
-    pub fn new(frame: Rect, data: Vec<f32>) -> Self {
-        Plot {
-            nannou_frame: frame,
-            data,
-        }
-    }
-}
