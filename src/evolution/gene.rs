@@ -3,6 +3,21 @@ use rand::Rng;
 
 use crate::util::{rnd_exp, Create};
 
+/// A CostFunction determines the cost of a Type
+pub type CostFunction<T> = fn(&T) -> f32;
+
+/// A Genome is a set of heritable pieces of information T
+/// It is also able to rate each piece of information according to a CostFunction
+pub type Genome<T> = Vec<T>;
+
+pub trait Genetic<T> {
+    fn rate_fitness(&self, cost_function: CostFunction<T>) -> f32;
+    fn mutate_at(&mut self, at: usize);
+    fn combine<S: PrimInt>(&mut self, fathers: &Vec<Self>, indices: &Vec<S>)
+    where Self: Sized;
+}
+
+/// A Quadrant defines a specific subset of the Genome
 pub enum Quadrant {
     TopTriangularQuadrant,
     BottomTriangularQuadrant,
@@ -10,57 +25,40 @@ pub enum Quadrant {
     LeftTriangularQuadrant,
 }
 
-pub type CostFunction<T> = fn(&T) -> f32;
-/// A genome is a set of heritable pieces of information (PoI)
-#[derive(Debug, Clone)]
-pub struct Genome<T>
-where
-    T: Create + Clone + Copy,
-{
-    pub data: Vec<T>,
-    pub cost_function: CostFunction<T>,
-}
-
-impl<T> Genome<T>
+impl<T> Genetic<T> for Genome<T>
 where
     T: Create + Clone + Copy,
 {
     /// Determines the fitness of the genome
-    pub fn rate_fitness(&self) -> f32 {
+    fn rate_fitness(&self, cost_function: CostFunction<T>) -> f32 {
         // let norm = 1.0 / self.data.len() as f32;
-        let sum: f32 = self.data.iter().map(|i| (self.cost_function)(i)).sum();
+        let sum: f32 = self.iter().map(|i| cost_function(i)).sum();
         sum
     }
 
     /// Replaces a PoI by another random PoI
-    pub fn mutate_at(&mut self, at: usize) {
-        self.data[at] = T::create();
-    }
-
-    /// Returns the amount of PoIs contained by the genome
-    pub fn len(&self) -> usize {
-        self.data.len()
+    fn mutate_at(&mut self, at: usize) {
+        self[at] = T::create();
     }
 
     /// Replaces subsets of the genome with subsets in "fathers"
-    pub fn combine<S: PrimInt>(&mut self, fathers: &Vec<Self>, indices: &Vec<S>) {
-        assert!(self.data.len() == indices.len());
+    fn combine<S: PrimInt>(&mut self, fathers: &Vec<Self>, indices: &Vec<S>) {
+        assert!(self.len() == indices.len());
 
         for (at, from) in indices.iter().enumerate() {
             let from = from.to_usize().unwrap();
             if from >= fathers.len() {
                 continue;
             }
-            self.data[at] = fathers[from].data[at];
+            self[at] = fathers[from][at];
         }
     }
+}
 
-    pub fn get_quadrant(&self, quadrant: Quadrant) -> Vec<&T> {
-        match quadrant {
-            Quadrant::RightTriangularQuadrant => todo!(),
-            _ => panic!("Such a quadrant does not exist!")
-        }
-    }
+pub trait Population<T: Create + Clone + Copy> {
+    fn new_genome(size: usize) -> Genome<T>;
+
+    fn extract_genomes(&mut self) -> Vec<&mut Genome<T>>;
 }
 
 /// Structs implementing this can evolve a population of up to <S_max> genomes T
@@ -70,8 +68,8 @@ where
     S: PrimInt,
 {
     /// Orders the population descendingly by fitness
-    fn weight(population: &mut Vec<&mut Genome<T>>) {
-        population.sort_unstable_by_key(|p| p.rate_fitness() as i32);
+    fn weight(population: &mut Vec<&mut Genome<T>>, cost_function: CostFunction<T>) {
+        population.sort_unstable_by_key(|p| p.rate_fitness(cost_function) as i32);
     }
     /// Randomly chooses a Vec of fathers according to their fitness
     fn get_fathers(
@@ -122,12 +120,12 @@ where
         }
     }
 
-    fn evolve(mut population: Vec<&mut Genome<T>>) {
+    fn evolve(mut population: Vec<&mut Genome<T>>, cost_function: CostFunction<T>) {
         let size = population.len();
 
-        Self::weight(&mut population);
+        Self::weight(&mut population, cost_function);
 
-        let weights = population.iter().map(|x| x.rate_fitness());
+        let weights = population.iter().map(|x| x.rate_fitness(cost_function));
 
         for (i, w) in weights.enumerate() {
             if i > 5 {

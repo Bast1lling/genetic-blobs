@@ -22,7 +22,7 @@ impl RGB {
 
 impl Create for RGB {
     type Params = ();
-    
+
     fn create() -> Self {
         let mut rng = thread_rng();
         RGB {
@@ -86,7 +86,7 @@ impl Blob {
             draw.rect()
                 .x_y(x, y)
                 .w_h(size, size)
-                .color(Rgb::from_components(self.genome.data[i].as_color()));
+                .color(Rgb::from_components(self.genome[i].as_color()));
         });
     }
 
@@ -102,7 +102,7 @@ impl Blob {
                 let y = bottom_left.1 + row as f32 * size;
                 (
                     pt2(x, y),
-                    Rgb::from_components(self.genome.data[index].as_color()),
+                    Rgb::from_components(self.genome[index].as_color()),
                 )
             });
             draw.polyline().weight(size).points_colored(points);
@@ -126,7 +126,7 @@ impl Blob {
                 draw.rect()
                     .x_y(x, y)
                     .w_h(self.nannou_size, self.nannou_size)
-                    .color(Rgb::from_components(self.genome.data[i].as_color()));
+                    .color(Rgb::from_components(self.genome[i].as_color()));
             }
         });
     }
@@ -150,7 +150,7 @@ impl Blob {
                 if dist <= offset {
                     points.push((
                         pt2(x, y),
-                        Rgb::from_components(self.genome.data[index].as_color()),
+                        Rgb::from_components(self.genome[index].as_color()),
                     ))
                 }
             }
