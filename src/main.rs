@@ -8,8 +8,8 @@ use nannou::prelude::*;
 use nannou_egui::{self, egui, Egui};
 
 /// internal modules
-use evolution::implementations::simple::SimpleBlobPopulation;
-use util::distribute_uniformly;
+use simulation::controller::SimpleBlobController;
+use util::{distribute_uniformly, Create};
 
 /// STARTING WINDOW SIZE
 const WIDTH: f32 = 640.0;
@@ -22,7 +22,7 @@ trait Nannou {
 struct Model {
     center: Point2,
     zoom: f32,
-    population: SimpleBlobPopulation,
+    controller: SimpleBlobController,
     egui: Egui,
     count: u32,
     window_id: WindowId,
@@ -44,8 +44,8 @@ fn model(app: &App) -> Model {
     let blob_size = 3.0;
     let blob_amount: u16 = 64;
     let points = distribute_uniformly(blob_amount, (genome_length as f32).sqrt() * blob_size);
-
-    let population = SimpleBlobPopulation::new(points, blob_size, blob_amount, genome_length);
+    let params = Some((points, blob_size, blob_amount, genome_length));
+    let population = SimpleBlobController::create_like(params);
 
     let window_id = app
         .new_window()
@@ -63,7 +63,7 @@ fn model(app: &App) -> Model {
     Model {
         center: position,
         zoom: 1.0,
-        population,
+        controller: population,
         egui,
         count,
         window_id,
@@ -73,7 +73,7 @@ fn model(app: &App) -> Model {
 fn update(app: &App, model: &mut Model, update: Update) {
     let Model {
         ref mut egui,
-        ref mut population,
+        controller: ref mut population,
         ..
     } = *model;
 
@@ -103,7 +103,7 @@ fn view(app: &App, model: &Model, frame: Frame) {
     //model.blob.draw_as_polyline(&draw, (0., 0.), 30.);
     //draw_function(&draw, &win, |x| (1./win.h()) * x * x, 1.);
 
-    model.population.draw(&draw, model);
+    model.controller.draw(&draw, model);
 
     draw.to_frame(app, &frame).unwrap();
 

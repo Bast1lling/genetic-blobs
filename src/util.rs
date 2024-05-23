@@ -5,7 +5,11 @@ use rand::Rng;
 use std::f32::consts::PI;
 
 pub trait Create {
-    fn new() -> Self;
+    type Params;
+
+    fn create() -> Self;
+
+    fn create_like(params: Option<Self::Params>) -> Self;
 }
 
 /// distribute *amount* objects uniformly in space

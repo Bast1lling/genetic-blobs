@@ -10,6 +10,7 @@ pub enum Quadrant {
     LeftTriangularQuadrant,
 }
 
+pub type CostFunction<T> = fn(&T) -> f32;
 /// A genome is a set of heritable pieces of information (PoI)
 #[derive(Debug, Clone)]
 pub struct Genome<T>
@@ -17,7 +18,7 @@ where
     T: Create + Clone + Copy,
 {
     pub data: Vec<T>,
-    pub cost_function: fn(&T) -> f32,
+    pub cost_function: CostFunction<T>,
 }
 
 impl<T> Genome<T>
@@ -33,7 +34,7 @@ where
 
     /// Replaces a PoI by another random PoI
     pub fn mutate_at(&mut self, at: usize) {
-        self.data[at] = T::new();
+        self.data[at] = T::create();
     }
 
     /// Returns the amount of PoIs contained by the genome

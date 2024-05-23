@@ -21,13 +21,19 @@ impl RGB {
 }
 
 impl Create for RGB {
-    fn new() -> Self {
+    type Params = ();
+    
+    fn create() -> Self {
         let mut rng = thread_rng();
         RGB {
             r: rng.gen(),
             g: rng.gen(),
             b: rng.gen(),
         }
+    }
+
+    fn create_like(_params: Option<Self::Params>) -> Self {
+        Self::create()
     }
 }
 
