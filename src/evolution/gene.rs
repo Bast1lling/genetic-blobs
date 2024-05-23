@@ -3,6 +3,13 @@ use rand::Rng;
 
 use crate::util::{rnd_exp, Create};
 
+pub enum Quadrant {
+    TopTriangularQuadrant,
+    BottomTriangularQuadrant,
+    RightTriangularQuadrant,
+    LeftTriangularQuadrant,
+}
+
 /// A genome is a set of heritable pieces of information (PoI)
 #[derive(Debug, Clone)]
 pub struct Genome<T>
@@ -44,6 +51,13 @@ where
                 continue;
             }
             self.data[at] = fathers[from].data[at];
+        }
+    }
+
+    pub fn get_quadrant(&self, quadrant: Quadrant) -> Vec<&T> {
+        match quadrant {
+            Quadrant::RightTriangularQuadrant => todo!(),
+            _ => panic!("Such a quadrant does not exist!")
         }
     }
 }

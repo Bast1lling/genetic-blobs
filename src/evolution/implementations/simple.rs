@@ -73,6 +73,10 @@ impl SimpleBlobPopulation {
         }
         genomes
     }
+
+    fn update_velocities(&mut self) {
+        
+    }
 }
 
 impl Nannou for SimpleBlobPopulation {
@@ -85,6 +89,11 @@ impl Nannou for SimpleBlobPopulation {
     fn update(&mut self) {
         let genome_references = self.extract_genomes();
         Self::evolve(genome_references);
+        self.update_velocities();
+
+        for blob in self.blobs.iter_mut() {
+            blob.update();
+        }
     }
 }
 

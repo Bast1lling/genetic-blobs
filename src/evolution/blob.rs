@@ -36,6 +36,7 @@ pub struct Blob {
     pub genome: Genome<RGB>,
     nannou_size: f32,
     nannou_position: Point2,
+    velocity: Vec2,
 }
 
 impl Nannou for Blob {
@@ -53,7 +54,9 @@ impl Nannou for Blob {
         }
     }
 
-    fn update(&mut self) {}
+    fn update(&mut self) {
+        self.nannou_position += self.velocity;
+    }
 }
 
 impl Blob {
@@ -62,6 +65,7 @@ impl Blob {
             genome: genome,
             nannou_size,
             nannou_position,
+            velocity: Vec2::ZERO,
         }
     }
 
