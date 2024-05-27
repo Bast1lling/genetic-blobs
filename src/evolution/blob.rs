@@ -7,7 +7,7 @@ use nannou::Draw;
 /// external crate
 use rand::{thread_rng, Rng};
 
-use super::gene::Creature;
+use super::gene::{Creature, QuadraticGenome};
 
 #[derive(Debug, Clone, Copy)]
 pub struct RGB {
@@ -44,7 +44,7 @@ pub struct Blob {
     pub genome: Genome<RGB>,
     nannou_size: f32,
     nannou_position: Point2,
-    velocity: Vec2,
+    pub velocity: Vec2,
 }
 
 impl Creature<RGB> for Blob {
@@ -64,6 +64,7 @@ impl Nannou for Blob {
             1 => self.draw_simple_rect(draw, position, size),
             2 => self.draw_circle(draw),
             3 => self.draw_simple_circle(draw),
+            4 => self.draw_debug(draw, position, size),
             _ => panic!("This drawing mode does not exist!"),
         }
     }
@@ -95,6 +96,25 @@ impl Blob {
                 .x_y(x, y)
                 .w_h(size, size)
                 .color(Rgb::from_components(self.genome[i].as_color()));
+        });
+    }
+
+    pub fn draw_debug(&self, draw: &Draw, at: Vec2, size: f32) {
+        let width = (self.genome.len() as f32).sqrt() as usize;
+        let offset = (width as f32 / 2.) * size - size / 2.;
+        let bottom_left = (at.x - offset, at.y - offset);
+        let quadrant = self.genome.get_quadrant(super::gene::Quadrant::TopTriangularQuadrant);
+        (0..self.genome.len()).for_each(|i| {
+            let temp = i / width;
+            let y = bottom_left.1 + (temp as f32) * size;
+            let x = bottom_left.0 + (i % width as usize) as f32 * size;
+            let color = &self.genome[i];
+            if quadrant.iter().any(|&x| std::ptr::eq(x, color)) {
+                draw.rect()
+                .x_y(x, y)
+                .w_h(size, size)
+                .color(Rgb::from_components(color.as_color()));
+            }
         });
     }
 

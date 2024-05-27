@@ -3,27 +3,14 @@ use rand::Rng;
 
 use crate::util::{rnd_exp, Create};
 
-use super::population;
-
 /// A CostFunction determines the cost of an information T
 pub type CostFunction<T> = fn(&T) -> f32;
 
 /// A Genome is a set of heritable pieces of information T
 pub type Genome<T> = Vec<T>;
 
-/// A Quadrant defines a specific subset of the Genome
-pub enum Quadrant {
-    TopTriangularQuadrant,
-    BottomTriangularQuadrant,
-    RightTriangularQuadrant,
-    LeftTriangularQuadrant,
-}
-
 /// The trait which a Genome needs to fulfill
 pub trait Genetic<T> {
-    /// Determines the combined cost of a Genome
-    fn rate_fitness(&self, cost_function: CostFunction<T>) -> f32;
-
     /// Randomly replaces a single information inside a Genome
     fn mutate_at(&mut self, at: usize);
 
@@ -33,18 +20,26 @@ pub trait Genetic<T> {
         Self: Sized;
 }
 
-/// Concrete implementation of the Genetic trait
-impl<T> Genetic<T> for Genome<T>
-where
-    T: Create + Clone + Copy,
-{
-    /// Sums up the single costs
-    fn rate_fitness(&self, cost_function: CostFunction<T>) -> f32 {
-        // let norm = 1.0 / self.data.len() as f32;
-        let sum: f32 = self.iter().map(|i| cost_function(i)).sum();
-        sum
-    }
+/// A Quadrant defines a specific subset of the Genome
+pub enum Quadrant {
+    TopTriangularQuadrant,
+    BottomTriangularQuadrant,
+    RightTriangularQuadrant,
+    LeftTriangularQuadrant,
+}
 
+/// A Genome is Quadratic if the following assumptions are fulfilled:
+/// 1) width = Genome.len().sqrt() is a natural number
+/// 2) Genome[x,y] = Genome[y*width + x]
+pub trait QuadraticGenome<T> : Genetic<T> {
+    fn side_length(&self) -> usize;
+    fn get(&self, x: usize, y: usize) -> &T;
+    fn get_quadrant(&self, quadrant: Quadrant) -> Vec<&T>;
+}
+
+/// Concrete implementation of the Genetic trait
+impl<T: Create + Clone + Copy> Genetic<T> for Genome<T>
+{
     /// Requires the information to implement Create
     fn mutate_at(&mut self, at: usize) {
         self[at] = T::create();
@@ -61,6 +56,73 @@ where
                 continue;
             }
             self[at] = fathers[from][at];
+        }
+    }
+}
+
+impl<T: Create + Clone + Copy> QuadraticGenome<T> for Genome<T> {
+
+    fn side_length(&self) -> usize {
+        (self.len() as f32).sqrt() as usize
+    }
+
+    fn get(&self, x: usize, y: usize) -> &T {
+        let width = self.side_length();
+        &self[y*width + x]
+    }
+
+    fn get_quadrant(&self, quadrant: Quadrant) -> Genome<&T> {
+        let width = self.side_length();
+        let get_triangle = |mut start: usize, mut end: usize| {
+            let mut result = Vec::with_capacity(width/2);
+            while end.checked_sub(start) != None {
+                let mut row = Vec::with_capacity(width/2);
+                for i in start..end {
+                    row.push(i);
+                }
+                result.push(row);
+                start += 1;
+                end = end.checked_sub(1).unwrap_or(0);
+            }
+            result
+        };
+
+        let get_quadrant_like = 
+        |f: &dyn Fn(usize) -> usize, 
+         g: &dyn Fn(usize, usize) -> (usize, usize),| {
+            let columns = get_triangle(0, width);
+            let mut result = Vec::with_capacity(self.len()/2);
+            for (i, column) in columns.iter().enumerate() {
+                let fixed = f(i);
+                for loose in column.iter() {
+                    let (x, y) = g(fixed, *loose);
+                    result.push(self.get(x, y));
+                }
+            }
+            result
+        };
+
+        match quadrant {
+            Quadrant::RightTriangularQuadrant => {
+                let f = |x: usize| width - 1 - x;
+                let g = |a: usize, b: usize| (a,b);
+                get_quadrant_like(&f,&g)
+            },
+            Quadrant::TopTriangularQuadrant => {
+                let f = |x: usize| width - 1 - x;
+                let g = |a: usize, b: usize| (b,a);
+                get_quadrant_like(&f,&g)
+            },
+            Quadrant::LeftTriangularQuadrant => {
+                let f = |x: usize| x;
+                let g = |a: usize, b: usize| (a,b);
+                get_quadrant_like(&f,&g)
+            },
+            Quadrant::BottomTriangularQuadrant => {
+                let f = |x: usize| x;
+                let g = |a: usize, b: usize| (b,a);
+                get_quadrant_like(&f,&g)
+            },
         }
     }
 }
@@ -102,8 +164,8 @@ where
     S: PrimInt,
 {
     /// Puts the genome with lowest cost first
-    fn weight(genome_pool: &mut Vec<&mut Genome<T>>, cost_function: CostFunction<T>) {
-        genome_pool.sort_unstable_by_key(|p| p.rate_fitness(cost_function) as i32);
+    fn weight(genome_pool: &mut Vec<&mut Genome<T>>, rate_fitness: CostFunction<Genome<T>>) {
+        genome_pool.sort_unstable_by_key(|p| rate_fitness(p) as i32);
     }
 
     /// Randomly chooses a pool of fathers from the population
@@ -158,16 +220,16 @@ where
 
     /// One iteration of a genetic algorithm
     /// It manipulates the genomes of a population to form a new generation
-    fn evolve(population: &mut Vec<R>, cost_function: CostFunction<T>) {
+    fn evolve(population: &mut Vec<R>, rate_fitness: CostFunction<Genome<T>>) {
         let mut genome_pool: Vec<&mut Genome<T>> = Vec::with_capacity(population.len());
         for creature in population.iter_mut() {
             genome_pool.push(creature.extract_genome());
         }
         let size = genome_pool.len();
 
-        Self::weight(&mut genome_pool, cost_function);
+        Self::weight(&mut genome_pool, rate_fitness);
 
-        let weights = genome_pool.iter().map(|x| x.rate_fitness(cost_function));
+        let weights = genome_pool.iter().map(|x| rate_fitness(x));
 
         for (i, w) in weights.enumerate() {
             if i > 5 {
