@@ -3,8 +3,8 @@ use nannou::glam::Vec2;
 use crate::{
     evolution::{
         blob::RGB,
-        gene::{CostFunction, Creature, Evolve, Genome, QuadraticGenome},
-        population::{extract_velocity, move_to, red_ratio, SimpleBlobPopulation},
+        gene::{CostFunction, Creature, Evolve, Genome},
+        population::{compare_to, create_black, extract_velocity, move_to, SimpleBlobPopulation}, square::Square,
     },
     util::Create,
     Nannou,
@@ -48,11 +48,20 @@ impl Create for SimpleBlobController {
     }
 
     fn create_like(params: Option<Self::Params>) -> Self {
-        let cost_function: CostFunction<Genome<RGB>> = |g| move_to(g, Vec2::new(1.,0.));
+        // TODO: fix the hardcoded stuff
+        let mut reference = create_black(12*12);
+        reference.set_quadrant(crate::evolution::square::Quadrant::RightTriangularQuadrant, RGB { r: 255, g: 0, b: 0 });
+        let cost_function: CostFunction<Genome<RGB>> = compare_to_red;
         let population = SimpleBlobPopulation::create_like(params);
         SimpleBlobController {
             population,
             cost_function,
         }
     }
+}
+
+fn compare_to_red(g: &Genome<RGB>) -> f32 {
+    let mut reference = create_black(12*12);
+    reference.set_quadrant(crate::evolution::square::Quadrant::RightTriangularQuadrant, RGB { r: 255, g: 0, b: 0 });
+    compare_to(g, &reference)
 }

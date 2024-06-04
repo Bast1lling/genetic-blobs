@@ -1,13 +1,16 @@
-use crate::evolution::gene::Genome;
-use crate::util::Create;
-use crate::{Model, Nannou};
 use nannou::color::Rgb;
 use nannou::geom::{pt2, Point2, Vec2};
 use nannou::Draw;
 /// external crate
 use rand::{thread_rng, Rng};
 
-use super::gene::{Creature, QuadraticGenome};
+use crate::{
+    Model, Nannou,
+    util::Create,
+    evolution::{
+        gene::{Creature, Genome, Compare},
+        square::{Square, Quadrant},
+    }};
 
 #[derive(Debug, Clone, Copy)]
 pub struct RGB {
@@ -36,6 +39,16 @@ impl Create for RGB {
 
     fn create_like(_params: Option<Self::Params>) -> Self {
         Self::create()
+    }
+}
+
+impl Compare for RGB {
+    fn compare(&self, to: &Self) -> f32 {
+        let norm = (3 * 255) as f32;
+        let r_diff = (self.r as f32 - to.r as f32).abs();
+        let g_diff = (self.g as f32 - to.g as f32).abs();
+        let b_diff = (self.b as f32 - to.b as f32).abs();
+        (norm - (r_diff + g_diff + b_diff))/norm
     }
 }
 
@@ -103,7 +116,7 @@ impl Blob {
         let width = (self.genome.len() as f32).sqrt() as usize;
         let offset = (width as f32 / 2.) * size - size / 2.;
         let bottom_left = (at.x - offset, at.y - offset);
-        let quadrant = self.genome.get_quadrant(super::gene::Quadrant::TopTriangularQuadrant);
+        let quadrant = self.genome.get_quadrant(Quadrant::TopTriangularQuadrant);
         (0..self.genome.len()).for_each(|i| {
             let temp = i / width;
             let y = bottom_left.1 + (temp as f32) * size;

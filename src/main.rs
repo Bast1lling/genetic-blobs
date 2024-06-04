@@ -39,9 +39,9 @@ fn main() {
 }
 
 fn model(app: &App) -> Model {
-    let genome_length = 8 * 8;
+    let genome_length = 12 * 12;
     let blob_size = 3.0;
-    let blob_amount: u16 = 64;
+    let blob_amount: u16 = 32;
     let points = distribute_uniformly(blob_amount, (genome_length as f32).sqrt() * blob_size);
     let params = Some((points, blob_size, blob_amount, genome_length));
     let population = SimpleBlobController::create_like(params);

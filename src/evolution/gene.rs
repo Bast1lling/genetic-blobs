@@ -20,21 +20,15 @@ pub trait Genetic<T> {
         Self: Sized;
 }
 
-/// A Quadrant defines a specific subset of the Genome
-pub enum Quadrant {
-    TopTriangularQuadrant,
-    BottomTriangularQuadrant,
-    RightTriangularQuadrant,
-    LeftTriangularQuadrant,
+/// A type which carries a Genome<T> is called a Creature
+pub trait Creature<T: Create + Clone + Copy> {
+    /// A Creature can provide access to its Genome through this interface method
+    fn extract_genome(&mut self) -> &mut Genome<T>;
 }
 
-/// A Genome is Quadratic if the following assumptions are fulfilled:
-/// 1) width = Genome.len().sqrt() is a natural number
-/// 2) Genome[x,y] = Genome[y*width + x]
-pub trait QuadraticGenome<T> : Genetic<T> {
-    fn side_length(&self) -> usize;
-    fn get(&self, x: usize, y: usize) -> &T;
-    fn get_quadrant(&self, quadrant: Quadrant) -> Vec<&T>;
+/// rates similarity in percent
+pub trait Compare {
+    fn compare(&self, to: &Self) -> f32;
 }
 
 /// Concrete implementation of the Genetic trait
@@ -60,73 +54,6 @@ impl<T: Create + Clone + Copy> Genetic<T> for Genome<T>
     }
 }
 
-impl<T: Create + Clone + Copy> QuadraticGenome<T> for Genome<T> {
-
-    fn side_length(&self) -> usize {
-        (self.len() as f32).sqrt() as usize
-    }
-
-    fn get(&self, x: usize, y: usize) -> &T {
-        let width = self.side_length();
-        &self[y*width + x]
-    }
-
-    fn get_quadrant(&self, quadrant: Quadrant) -> Genome<&T> {
-        let width = self.side_length();
-        let get_triangle = |mut start: usize, mut end: usize| {
-            let mut result = Vec::with_capacity(width/2);
-            while end.checked_sub(start) != None {
-                let mut row = Vec::with_capacity(width/2);
-                for i in start..end {
-                    row.push(i);
-                }
-                result.push(row);
-                start += 1;
-                end = end.checked_sub(1).unwrap_or(0);
-            }
-            result
-        };
-
-        let get_quadrant_like = 
-        |f: &dyn Fn(usize) -> usize, 
-         g: &dyn Fn(usize, usize) -> (usize, usize),| {
-            let columns = get_triangle(0, width);
-            let mut result = Vec::with_capacity(self.len()/2);
-            for (i, column) in columns.iter().enumerate() {
-                let fixed = f(i);
-                for loose in column.iter() {
-                    let (x, y) = g(fixed, *loose);
-                    result.push(self.get(x, y));
-                }
-            }
-            result
-        };
-
-        match quadrant {
-            Quadrant::RightTriangularQuadrant => {
-                let f = |x: usize| width - 1 - x;
-                let g = |a: usize, b: usize| (a,b);
-                get_quadrant_like(&f,&g)
-            },
-            Quadrant::TopTriangularQuadrant => {
-                let f = |x: usize| width - 1 - x;
-                let g = |a: usize, b: usize| (b,a);
-                get_quadrant_like(&f,&g)
-            },
-            Quadrant::LeftTriangularQuadrant => {
-                let f = |x: usize| x;
-                let g = |a: usize, b: usize| (a,b);
-                get_quadrant_like(&f,&g)
-            },
-            Quadrant::BottomTriangularQuadrant => {
-                let f = |x: usize| x;
-                let g = |a: usize, b: usize| (b,a);
-                get_quadrant_like(&f,&g)
-            },
-        }
-    }
-}
-
 impl<T> Create for Genome<T>
 where
     T: Create + Clone + Copy,
@@ -147,10 +74,18 @@ where
     }
 }
 
-/// A type which carries a Genome<T> is called a Creature
-pub trait Creature<T: Create + Clone + Copy> {
-    /// A Creature can provide access to its Genome through this interface method
-    fn extract_genome(&mut self) -> &mut Genome<T>;
+impl<T> Compare for Genome<T>
+where T: Compare
+{
+    fn compare(&self, to: &Self) -> f32 {
+        assert!(self.len() == to.len(), "Can not compare genomes of different sizes");
+        let mut similarity = 0.0;
+        let norm = self.len() as f32;
+        for (a,b) in self.iter().zip(to.iter()) {
+            similarity += a.compare(b);
+        }
+        similarity / norm
+    }
 }
 
 /// Definition of a genetic algorithm operating on a population
@@ -189,7 +124,7 @@ where
 
         // mapper function which maps a genome index to a father
         let map = |_: usize| {
-            let result = S::from(rnd_exp(fathers.len() / 2) % (fathers.len() + 1));
+            let result = S::from(rnd_exp((fathers.len() / 2).clamp(1, fathers.len())) % (fathers.len() + 1));
             match result {
                 Some(x) => x,
                 None => panic!("Failed to convert usize into this PrimNum type"),
@@ -226,22 +161,12 @@ where
             genome_pool.push(creature.extract_genome());
         }
         let size = genome_pool.len();
-
         Self::weight(&mut genome_pool, rate_fitness);
-
-        let weights = genome_pool.iter().map(|x| rate_fitness(x));
-
-        for (i, w) in weights.enumerate() {
-            if i > 5 {
-                break;
-            }
-            println!("place number {} has cost {}", i, w);
-        }
 
         let mut index = size;
 
         while index > 0 {
-            let fathers = Self::get_fathers(&genome_pool, 4, size / 2);
+            let fathers = Self::get_fathers(&genome_pool, 1, size / 2);
             let mother = &mut genome_pool[index - 1];
             let genome_size = mother.len();
             let indices = Self::get_indices(genome_size, &fathers);
